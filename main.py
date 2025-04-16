@@ -73,14 +73,29 @@ async def slash_ping(interaction: discord.Interaction):
 # ⚠️ /status เพื่อแสดงสถานะของบอท
 @bot.tree.command(name="status", description="แสดงสถานะของบอท")
 async def status_command(interaction: discord.Interaction):
+    # คำนวณข้อมูลเพิ่มเติม
+    latency = round(bot.latency * 1000)  # Latency ของบอท (ms)
+    current_time = datetime.now(THAI_TZ).strftime("%d-%m-%Y %H:%M:%S")  # เวลาปัจจุบันในเขตเวลาไทย
+    total_guilds = len(bot.guilds)  # จำนวนเซิร์ฟเวอร์ที่บอทอยู่
+    total_members = sum(guild.member_count for guild in bot.guilds)  # จำนวนสมาชิกทั้งหมดในเซิร์ฟเวอร์
+    uptime_seconds = (datetime.now() - bot.start_time).total_seconds()  # เวลาทำงานของบอท
+    uptime = f"{int(uptime_seconds // 3600)} ชั่วโมง {int((uptime_seconds % 3600) // 60)} นาที"
+
+    # สร้าง Embed สำหรับแสดงสถานะ
     embed = discord.Embed(
         title="📊 สถานะของบอท",
-        description="สถานะปัจจุบันของบอท",
+        description="ข้อมูลสถานะปัจจุบันของบอท",
         color=discord.Color.green()
     )
     embed.add_field(name="🟢 สถานะ", value="ออนไลน์", inline=False)
-    embed.add_field(name="📅 เวลาปัจจุบัน", value=datetime.now(THAI_TZ).strftime("%d-%m-%Y %H:%M:%S"), inline=False)
-    embed.set_footer(text="69Ranger Gentleman Community Bot")
+    embed.add_field(name="� Latency", value=f"{latency} ms", inline=False)
+    embed.add_field(name="⏰ เวลาปัจจุบัน", value=current_time, inline=False)
+    embed.add_field(name="🌐 จำนวนเซิร์ฟเวอร์", value=f"{total_guilds} เซิร์ฟเวอร์", inline=False)
+    embed.add_field(name="👥 จำนวนสมาชิกทั้งหมด", value=f"{total_members} คน", inline=False)
+    embed.add_field(name="⏳ เวลาทำงาน", value=uptime, inline=False)
+    embed.set_footer(text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell")
+
+    # ส่ง Embed ไปยังผู้ใช้
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 #=============================================================================================
@@ -161,6 +176,7 @@ async def on_member_remove(member):
 # ⚠️ Bot Ready Event
 @bot.event
 async def on_ready():
+    bot.start_time = datetime.now()  # เก็บเวลาที่บอทเริ่มทำงาน
     logging.info(f'✅ Logged in as {bot.user}')
     await bot.change_presence(
         status=discord.Status.online,
