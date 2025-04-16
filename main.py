@@ -9,7 +9,7 @@ from keep_alive import keep_alive
 from datetime import datetime, timedelta
 from typing import List
 from discord import app_commands
-from discord.app_commands import Greedy
+from discord.ext.commands import Greedy
 
 
 
