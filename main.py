@@ -52,7 +52,10 @@ async def help_command(interaction: discord.Interaction):
     )
     embed.add_field(
         name="📩 คำสั่งสำหรับแอดมิน",
-        value="`/dm` - ส่งข้อความ DM ให้สมาชิกใน Role",
+        value=(
+            "`/dm` - ส่งข้อความ DM ให้สมาชิกใน Role\n"
+            "`/say` - ส่งข้อความไปยังห้องที่กำหนด"
+        ),
         inline=False
     )
     embed.set_footer(
@@ -126,6 +129,22 @@ async def dm(interaction: discord.Interaction, role: discord.Role, message: str)
     await interaction.response.send_message(
         f"✅ ส่งสำเร็จ: {success} คน\n❌ ส่งไม่สำเร็จ: {failed} คน", ephemeral=True
     )
+#=============================================================================================
+#⚠️ /say ส่งข้อความไปยังห้องที่กำหนด
+@bot.tree.command(name="say", description="ให้บอทส่งข้อความไปยังห้องที่กำหนด (เฉพาะแอดมิน)")
+@app_commands.describe(channel="เลือกห้องที่ต้องการส่งข้อความ", message="ข้อความที่จะส่ง")
+async def say_command(interaction: discord.Interaction, channel: discord.TextChannel, message: str):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("❌ คุณไม่มีสิทธิ์ใช้คำสั่งนี้ (ต้องเป็นแอดมิน)", ephemeral=True)
+        return
+
+    try:
+        await channel.send(message)
+        await interaction.response.send_message(f"✅ ส่งข้อความไปยังห้อง {channel.mention} สำเร็จ!", ephemeral=True)
+    except discord.Forbidden:
+        await interaction.response.send_message(f"❌ ไม่สามารถส่งข้อความไปยังห้อง {channel.mention} ได้ (บอทอาจไม่มีสิทธิ์)", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"❌ เกิดข้อผิดพลาด: {e}", ephemeral=True)
 #=============================================================================================
 # 🛠️ Events
 #=============================================================================================
