@@ -146,6 +146,37 @@ async def say_command(interaction: discord.Interaction, channel: discord.TextCha
     except Exception as e:
         await interaction.response.send_message(f"❌ เกิดข้อผิดพลาด: {e}", ephemeral=True)
 #=============================================================================================
+#⚠️ /join ให้บอทเข้าร่วมห้องเสียง
+@bot.tree.command(name="join", description="ให้บอทเข้าร่วมห้องเสียง (Voice Channel)")
+async def join_command(interaction: discord.Interaction):
+    if not interaction.user.voice or not interaction.user.voice.channel:
+        await interaction.response.send_message("❌ คุณต้องอยู่ในห้องเสียงก่อนถึงจะใช้คำสั่งนี้ได้", ephemeral=True)
+        return
+
+    channel = interaction.user.voice.channel
+    try:
+        await channel.connect()
+        await interaction.response.send_message(f"✅ บอทเข้าร่วมห้องเสียง {channel.name} สำเร็จ!", ephemeral=True)
+    except discord.ClientException:
+        await interaction.response.send_message("❌ บอทอยู่ในห้องเสียงแล้ว", ephemeral=True)
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ บอทไม่มีสิทธิ์เข้าร่วมห้องเสียงนี้", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"❌ เกิดข้อผิดพลาด: {e}", ephemeral=True)
+#=============================================================================================
+#⚠️ /leave ให้บอทออกจากห้องเสียง
+@bot.tree.command(name="leave", description="ให้บอทออกจากห้องเสียง (Voice Channel)")
+async def leave_command(interaction: discord.Interaction):
+    if not interaction.guild.voice_client:
+        await interaction.response.send_message("❌ บอทไม่ได้อยู่ในห้องเสียง", ephemeral=True)
+        return
+
+    try:
+        await interaction.guild.voice_client.disconnect()
+        await interaction.response.send_message("✅ บอทออกจากห้องเสียงสำเร็จ!", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"❌ เกิดข้อผิดพลาด: {e}", ephemeral=True)
+#=============================================================================================
 # 🛠️ Events
 #=============================================================================================
 #⚠️ auto Role เพิ่ม Role ให้สมาชิกใหม่
