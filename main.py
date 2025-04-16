@@ -5,10 +5,11 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 from discord.ext import commands
-from discord import app_commands
 from keep_alive import keep_alive
 from datetime import datetime, timedelta
 from typing import List
+from discord import app_commands
+from discord.app_commands import Greedy
 
 
 
@@ -110,7 +111,7 @@ async def dm(interaction: discord.Interaction, role: discord.Role = None, member
         view=view,
         ephemeral=True
     )
-    
+
 class ConfirmView(discord.ui.View):
     def __init__(self, role, message, members):
         super().__init__(timeout=None)  # ตั้งค่า timeout=None เพื่อป้องกัน View หมดอายุ
