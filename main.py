@@ -1,12 +1,15 @@
 import discord
-from discord.ext import commands
-from discord import app_commands
 import os
-from keep_alive import keep_alive
 import asyncio
-from datetime import datetime, timedelta
 import logging
 logging.basicConfig(level=logging.DEBUG)
+
+from discord.ext import commands
+from discord import app_commands
+from keep_alive import keep_alive
+from datetime import datetime, timedelta
+from typing import List
+
 
 
 # Initialize bot and intents
@@ -77,6 +80,37 @@ async def status_command(interaction: discord.Interaction):
 
 #=============================================================================================
 #⚠️ /DM ส่ง ข้อความ DM 
+@bot.tree.command(name="dm", description="ส่ง DM ให้สมาชิกเฉพาะ Role หรือ @สมาชิก (เฉพาะแอดมิน)")
+@app_commands.describe(
+    role="เลือก Role ที่ต้องการส่งถึง (ปล่อยว่างหากต้องการส่งถึงสมาชิกเฉพาะ)",
+    members="เลือกสมาชิกที่ต้องการส่งถึง (ปล่อยว่างหากต้องการส่งถึง Role)",
+    message="ข้อความที่จะส่ง"
+)
+async def dm(interaction: discord.Interaction, role: discord.Role = None, members: List[discord.Member] = None, message: str = None):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("❌ คุณไม่มีสิทธิ์ใช้คำสั่งนี้ (ต้องเป็นแอดมิน)", ephemeral=True)
+        return
+
+    if not role and not members:
+        await interaction.response.send_message("❌ โปรดเลือก Role หรือ @สมาชิก อย่างน้อยหนึ่งตัวเลือก", ephemeral=True)
+        return
+
+    if role:
+        target_members = [m for m in role.members if not m.bot]
+    elif members:
+        target_members = [m for m in members if not m.bot]
+
+    if not target_members:
+        await interaction.response.send_message("❌ ไม่มีสมาชิกที่สามารถส่ง DM ได้", ephemeral=True)
+        return
+
+    view = ConfirmView(role, message, target_members)
+    await interaction.response.send_message(
+        f"⚠️ คุณต้องการส่งข้อความนี้ให้กับ `{len(target_members)}` คนหรือไม่?\n\n📨 ข้อความ:\n```{message}```",
+        view=view,
+        ephemeral=True
+    )
+    
 class ConfirmView(discord.ui.View):
     def __init__(self, role, message, members):
         super().__init__(timeout=None)  # ตั้งค่า timeout=None เพื่อป้องกัน View หมดอายุ
@@ -103,36 +137,7 @@ class ConfirmView(discord.ui.View):
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.edit_message(content="🚫 ยกเลิกการส่งข้อความ", view=None)
 
-@bot.tree.command(name="dm", description="ส่ง DM ให้สมาชิกเฉพาะ Role หรือ @สมาชิก (เฉพาะแอดมิน)")
-@app_commands.describe(
-    role="เลือก Role ที่ต้องการส่งถึง (ปล่อยว่างหากต้องการส่งถึงสมาชิกเฉพาะ)",
-    members="เลือกสมาชิกที่ต้องการส่งถึง (ปล่อยว่างหากต้องการส่งถึง Role)",
-    message="ข้อความที่จะส่ง"
-)
-async def dm(interaction: discord.Interaction, role: discord.Role = None, members: list[discord.Member] = None, message: str = None):
-    if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("❌ คุณไม่มีสิทธิ์ใช้คำสั่งนี้ (ต้องเป็นแอดมิน)", ephemeral=True)
-        return
 
-    if not role and not members:
-        await interaction.response.send_message("❌ โปรดเลือก Role หรือ @สมาชิก อย่างน้อยหนึ่งตัวเลือก", ephemeral=True)
-        return
-
-    if role:
-        target_members = [m for m in role.members if not m.bot]
-    elif members:
-        target_members = [m for m in members if not m.bot]
-
-    if not target_members:
-        await interaction.response.send_message("❌ ไม่มีสมาชิกที่สามารถส่ง DM ได้", ephemeral=True)
-        return
-
-    view = ConfirmView(role, message, target_members)
-    await interaction.response.send_message(
-        f"⚠️ คุณต้องการส่งข้อความนี้ให้กับ `{len(target_members)}` คนหรือไม่?\n\n📨 ข้อความ:\n```{message}```",
-        view=view,
-        ephemeral=True
-    )
 
 #=============================================================================================
 #⚠️ auto Role  เพิ่ม Role ให้สมาชิกใหม่
