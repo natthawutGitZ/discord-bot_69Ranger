@@ -183,8 +183,7 @@ import asyncio  # ใช้สำหรับการทำงานแบบ A
 @bot.tree.command(name="event", description="สร้างข้อความกิจกรรมพร้อมเวลานับถอยหลังแบบเรียลไทม์")
 @app_commands.describe(
     channel="เลือกห้องที่ต้องการส่งข้อความ",
-    date="วันที่ของกิจกรรม (เช่น วันเสาร์ที่ 29 มีนาคม 68)",
-    time="เวลารวมพล (เช่น 20:30)",
+    datetime_input="วันและเวลาของกิจกรรม (เช่น 01-01-2568 20:30)",
     operation="ชื่อ Operation (เช่น The Darknight Ep.4 – Phantom nightmare)",
     editor="ชื่อผู้แก้ไข (เช่น @Silver BlackWell)",
     preset="Preset-mod (เช่น 69Ranger RE Preset Edit V5)",
@@ -196,8 +195,7 @@ import asyncio  # ใช้สำหรับการทำงานแบบ A
 async def event_command(
     interaction: discord.Interaction,
     channel: discord.TextChannel,
-    date: str,
-    time: str,
+    datetime_input: str,
     operation: str,
     editor: str,
     preset: str,
@@ -212,14 +210,22 @@ async def event_command(
 
     # แปลงวันที่และเวลาเป็น datetime
     try:
-        event_datetime = datetime.strptime(f"{date} {time}", "%d %B %y %H:%M").replace(tzinfo=THAI_TZ)
+        # แยกปี พ.ศ. และแปลงเป็น ค.ศ.
+        date_part, time_part = datetime_input.split(" ")
+        day, month, year = map(int, date_part.split("-"))
+        year -= 543  # แปลงปี พ.ศ. เป็น ค.ศ.
+        event_datetime = datetime.strptime(f"{day}-{month}-{year} {time_part}", "%d-%m-%Y %H:%M").replace(tzinfo=THAI_TZ)
     except ValueError:
-        await interaction.response.send_message("❌ รูปแบบวันที่หรือเวลาไม่ถูกต้อง! ใช้รูปแบบ: วัน/เดือน/ปี ชั่วโมง:นาที", ephemeral=True)
+        await interaction.response.send_message(
+            "❌ รูปแบบวันที่หรือเวลาไม่ถูกต้อง! ใช้รูปแบบ: `วัน-เดือน-ปี ชั่วโมง:นาที`\n"
+            "ตัวอย่าง: `01-01-2568 20:30`",
+            ephemeral=True
+        )
         return
 
     # สร้าง Embed สำหรับกิจกรรม
     embed = discord.Embed(
-        title=f"📅 {date} รวมพลเวลา {time}",
+        title=f"📅 {datetime_input}",
         description=f"**Operation:** {operation}\n**Editor by:** {editor}\n**Preset:** {preset}\n**Tags:** {tags}",
         color=discord.Color.blue()
     )
