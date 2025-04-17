@@ -218,19 +218,6 @@ async def event_command(
         await interaction.response.send_message("❌ คุณไม่มีสิทธิ์ใช้คำสั่งนี้ (ต้องเป็นแอดมิน)", ephemeral=True)
         return
 
-    # แปลงวันที่และเวลาเป็น datetime
-        # แปลงวันที่และเวลาเป็นภาษาไทย
-    thai_days = ["วันอาทิตย์", "วันจันทร์", "วันอังคาร", "วันพุธ", "วันพฤหัสบดี", "วันศุกร์", "วันเสาร์"]
-    thai_months = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
-                   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
-    
-    # ดึงชื่อวันและเดือนในภาษาไทย
-    day_thai = thai_days[event_datetime.weekday()]  # ชื่อวันในภาษาไทย
-    month_thai = thai_months[event_datetime.month - 1]  # ชื่อเดือนในภาษาไทย
-    
-    # แปลงวันที่และเวลาเป็นรูปแบบภาษาไทย
-    thai_datetime = f"{day_thai}ที่ {event_datetime.day} {month_thai} {event_datetime.year + 543} เวลา {event_datetime.strftime('%H:%M')}"
-    
     try:
         # แยกปี พ.ศ. และแปลงเป็น ค.ศ.
         date_part, time_part = datetime_input.split(" ")
@@ -244,6 +231,18 @@ async def event_command(
             ephemeral=True
         )
         return
+    
+    # แปลงวันที่และเวลาเป็นภาษาไทย
+    thai_days = ["วันอาทิตย์", "วันจันทร์", "วันอังคาร", "วันพุธ", "วันพฤหัสบดี", "วันศุกร์", "วันเสาร์"]
+    thai_months = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+                   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
+    
+    # ดึงชื่อวันและเดือนในภาษาไทย
+    day_thai = thai_days[event_datetime.weekday()]  # ชื่อวันในภาษาไทย
+    month_thai = thai_months[event_datetime.month - 1]  # ชื่อเดือนในภาษาไทย
+    
+    # แปลงวันที่และเวลาเป็นรูปแบบภาษาไทย
+    thai_datetime = f"{day_thai}ที่ {event_datetime.day} {month_thai} {event_datetime.year + 543} เวลา {event_datetime.strftime('%H:%M')}"
 
     # สร้าง Embed สำหรับกิจกรรม
     embed = discord.Embed(
