@@ -177,6 +177,130 @@ async def leave_command(interaction: discord.Interaction):
     except Exception as e:
         await interaction.response.send_message(f"❌ เกิดข้อผิดพลาด: {e}", ephemeral=True)
 #=============================================================================================
+# ⚠️ /event สร้างข้อความกิจกรรมในรูปแบบที่กำหนด
+import asyncio  # ใช้สำหรับการทำงานแบบ Asynchronous
+
+@bot.tree.command(name="event", description="สร้างข้อความกิจกรรมพร้อมเวลานับถอยหลังแบบเรียลไทม์")
+@app_commands.describe(
+    channel="เลือกห้องที่ต้องการส่งข้อความ",
+    date="วันที่ของกิจกรรม (เช่น วันเสาร์ที่ 29 มีนาคม 68)",
+    time="เวลารวมพล (เช่น 20:30)",
+    operation="ชื่อ Operation (เช่น The Darknight Ep.4 – Phantom nightmare)",
+    editor="ชื่อผู้แก้ไข (เช่น @Silver BlackWell)",
+    preset="Preset-mod (เช่น 69Ranger RE Preset Edit V5)",
+    tags="แท็กที่ต้องการ (เช่น @69Rg Staff @69Rg Member @everyone)",
+    story="เนื้อเรื่องของกิจกรรม",
+    roles="บทบาทที่ต้องการ (เช่น  75th Ranger Regiment )",
+    image_url="URL ของรูปภาพ (ถ้ามี)"
+)
+async def event_command(
+    interaction: discord.Interaction,
+    channel: discord.TextChannel,
+    date: str,
+    time: str,
+    operation: str,
+    editor: str,
+    preset: str,
+    tags: str,
+    story: str,
+    roles: str,
+    image_url: Optional[str] = None
+):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("❌ คุณไม่มีสิทธิ์ใช้คำสั่งนี้ (ต้องเป็นแอดมิน)", ephemeral=True)
+        return
+
+    # แปลงวันที่และเวลาเป็น datetime
+    try:
+        event_datetime = datetime.strptime(f"{date} {time}", "%d %B %y %H:%M").replace(tzinfo=THAI_TZ)
+    except ValueError:
+        await interaction.response.send_message("❌ รูปแบบวันที่หรือเวลาไม่ถูกต้อง! ใช้รูปแบบ: วัน/เดือน/ปี ชั่วโมง:นาที", ephemeral=True)
+        return
+
+    # สร้าง Embed สำหรับกิจกรรม
+    embed = discord.Embed(
+        title=f"📅 {date} รวมพลเวลา {time}",
+        description=f"**Operation:** {operation}\n**Editor by:** {editor}\n**Preset:** {preset}\n**Tags:** {tags}",
+        color=discord.Color.blue()
+    )
+    embed.add_field(name="📖 Story", value=story, inline=False)
+    embed.add_field(name="🧥 Roles", value=roles, inline=False)
+    if image_url:
+        embed.set_image(url=image_url)
+    embed.set_footer(text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell")
+
+    # ส่งข้อความเริ่มต้น
+    message = await channel.send(embed=embed)
+
+    # สร้างเธรดสำหรับสรุปรายชื่อ
+    thread = await message.create_thread(name="📋 รายชื่อผู้เข้าร่วม", auto_archive_duration=1440)
+
+    # เพิ่มอิโมจิ
+    await message.add_reaction("✅")  # เข้าร่วม
+    await message.add_reaction("❌")  # ไม่เข้าร่วม
+    await message.add_reaction("🤔")  # อาจจะมา
+
+    # ฟังก์ชันอัปเดตรายชื่อในเธรด
+    async def update_summary():
+        try:
+            # ลบข้อความสรุปก่อนหน้า
+            async for msg in thread.history(limit=1):
+                await msg.delete()
+
+            # ดึงข้อมูลผู้ใช้จากปฏิกิริยา
+            message = await channel.fetch_message(message.id)
+            join_reaction = discord.utils.get(message.reactions, emoji="✅")
+            not_join_reaction = discord.utils.get(message.reactions, emoji="❌")
+            maybe_reaction = discord.utils.get(message.reactions, emoji="🤔")
+
+            join_users = [user async for user in join_reaction.users() if not user.bot] if join_reaction else []
+            not_join_users = [user async for user in not_join_reaction.users() if not user.bot] if not_join_reaction else []
+            maybe_users = [user async for user in maybe_reaction.users() if not user.bot] if maybe_reaction else []
+
+            # สร้างข้อความสรุป
+            summary = f"**✅ เข้าร่วม ({len(join_users)}):**\n" + "\n".join([user.mention for user in join_users])
+            summary += f"\n\n**❌ ไม่เข้าร่วม ({len(not_join_users)}):**\n" + "\n".join([user.mention for user in not_join_users])
+            summary += f"\n\n**🤔 อาจจะมา ({len(maybe_users)}):**\n" + "\n".join([user.mention for user in maybe_users])
+
+            # ส่งข้อความสรุปใหม่
+            await thread.send(summary)
+        except Exception as e:
+            logging.error(f"❌ เกิดข้อผิดพลาดในการอัปเดตรายชื่อ: {e}")
+
+    # ตั้งเวลานับถอยหลัง
+    while True:
+        now = datetime.now(THAI_TZ)
+        time_remaining = (event_datetime - now).total_seconds()
+
+        if time_remaining <= 0:
+            # เมื่อถึงเวลาที่กำหนด
+            await message.reply("⏰ ถึงเวลารวมพลแล้ว!")
+            # แจ้งเตือนผู้ที่กด "เข้าร่วม"
+            join_reaction = discord.utils.get(message.reactions, emoji="✅")
+            if join_reaction:
+                join_users = [user async for user in join_reaction.users() if not user.bot]
+                for user in join_users:
+                    try:
+                        await user.send(f"⏰ ถึงเวลารวมพลสำหรับกิจกรรม: **{operation}** แล้ว!")
+                    except discord.Forbidden:
+                        logging.warning(f"❌ ไม่สามารถส่งข้อความแจ้งเตือนให้ {user.name} ได้ (สมาชิกอาจปิดการรับ DM)")
+            break
+
+        # อัปเดต Embed และสรุปรายชื่อ
+        hours, remainder = divmod(int(time_remaining), 3600)
+        minutes, seconds = divmod(remainder, 60)
+        embed.set_field_at(
+            index=0,
+            name="⏳ เวลาที่เหลือ",
+            value=f"{hours} ชั่วโมง {minutes} นาที {seconds} วินาที",
+            inline=False
+        )
+        await message.edit(embed=embed)
+        await update_summary()
+
+        # รอ 1 วินาทีก่อนอัปเดตครั้งถัดไป
+        await asyncio.sleep(1)
+#=============================================================================================
 # 🛠️ Events
 #=============================================================================================
 #⚠️ auto Role เพิ่ม Role ให้สมาชิกใหม่
