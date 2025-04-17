@@ -244,6 +244,9 @@ async def event_command(
     # แปลงวันที่และเวลาเป็นรูปแบบภาษาไทย
     thai_datetime = f"{day_thai}ที่ {event_datetime.day} {month_thai} {event_datetime.year + 543} เวลา {event_datetime.strftime('%H:%M')}"
     
+    # แจ้ง Discord ว่าบอทกำลังดำเนินการ
+    await interaction.response.defer()
+    
     # สร้าง Embed สำหรับกิจกรรม
     embed = discord.Embed(
         title=f"📅 {operation}",  # ใช้ชื่อ Operation เป็นหัวข้อ
@@ -305,7 +308,7 @@ async def event_command(
         else:
             await interaction.followup.send("❌ การส่งข้อความถูกยกเลิก", ephemeral=True)
     except asyncio.TimeoutError:
-        await interaction.followup.send("⏰ หมดเวลาการยืนยัน", ephemeral=True)
+        pass  # ไม่ทำอะไรเมื่อหมดเวลา
 
       # ฟังก์ชันอัปเดตรายชื่อในเธรด
     async def update_summary(message, thread):
