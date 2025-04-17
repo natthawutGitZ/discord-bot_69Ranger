@@ -307,7 +307,7 @@ async def event_command(
             await interaction.followup.send("❌ การส่งข้อความถูกยกเลิก", ephemeral=True)
     except asyncio.TimeoutError:
         await interaction.followup.send("⏰ หมดเวลาการยืนยัน", ephemeral=True)
-        
+
       # ฟังก์ชันอัปเดตรายชื่อในเธรด
     async def update_summary(message, thread):
         try:
@@ -330,14 +330,54 @@ async def event_command(
         except Exception as e:
             logging.error(f"❌ เกิดข้อผิดพลาดในการอัปเดตรายชื่อ: {e}")
 
-    # ตั้งเวลานับถอยหลัง
+        # ตั้งเวลานับถอยหลัง
     while True:
         now = datetime.now(THAI_TZ)
         time_remaining = (event_datetime - now).total_seconds()
-
+    
+        if time_remaining > 0:
+            # ก่อนถึงเวลาเริ่มกิจกรรม
+            hours, remainder = divmod(int(time_remaining), 3600)
+            minutes, seconds = divmod(remainder, 60)
+            embed.set_field_at(
+                index=0,
+                name="⏳ เวลาก่อนเริ่มกิจกรรม",
+                value=f"{hours} ชั่วโมง {minutes} นาที {seconds} วินาที",
+                inline=False
+            )
+            await message.edit(embed=embed)
+    
+        elif 0 <= time_remaining <= 14400:  # ระหว่าง 0 ถึง 4 ชั่วโมง (4 ชั่วโมง = 14400 วินาที)
+            # ระหว่างดำเนินการ
+            elapsed_time = abs(time_remaining)  # เวลาที่ผ่านไปตั้งแต่เริ่มกิจกรรม
+            hours, remainder = divmod(int(elapsed_time), 3600)
+            minutes, seconds = divmod(remainder, 60)
+            embed.set_field_at(
+                index=0,
+                name="🟢 สถานะกิจกรรม",
+                value=f"อยู่ในระหว่างดำเนินการ\nผ่านไปแล้ว {hours} ชั่วโมง {minutes} นาที {seconds} วินาที",
+                inline=False
+            )
+            await message.edit(embed=embed)
+    
+        else:
+            # หลังจาก 4 ชั่วโมง (กิจกรรมสิ้นสุด)
+            embed.set_field_at(
+                index=0,
+                name="🔴 สถานะกิจกรรม",
+                value="กิจกรรมสิ้นสุดแล้ว",
+                inline=False
+            )
+            await message.edit(embed=embed)
+            break  # ออกจากลูปเมื่อกิจกรรมสิ้นสุด
+    
+        # รอ 1 วินาทีก่อนอัปเดตครั้งถัดไป
+        await asyncio.sleep(1)
+    
+        # เมื่อถึงเวลาเริ่มกิจกรรม
         if time_remaining <= 0:
-            # เมื่อถึงเวลาที่กำหนด
             await message.reply("⏰ ถึงเวลารวมพลแล้ว!")
+    
             # แจ้งเตือนผู้ที่กด "เข้าร่วม"
             join_reaction = discord.utils.get(message.reactions, emoji="✅")
             if join_reaction:
@@ -348,7 +388,6 @@ async def event_command(
                     except discord.Forbidden:
                         logging.warning(f"❌ ไม่สามารถส่งข้อความแจ้งเตือนให้ {user.name} ได้ (สมาชิกอาจปิดการรับ DM)")
             break
-
         # อัปเดต Embed และสรุปรายชื่อ
         hours, remainder = divmod(int(time_remaining), 3600)
         minutes, seconds = divmod(remainder, 60)
