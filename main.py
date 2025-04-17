@@ -179,6 +179,16 @@ async def leave_command(interaction: discord.Interaction):
 #=============================================================================================
 # ⚠️ /event สร้างข้อความกิจกรรมในรูปแบบที่กำหนด
 import asyncio  # ใช้สำหรับการทำงานแบบ Asynchronous
+import re
+
+def is_valid_url(url: str) -> bool:
+    regex = re.compile(
+        r'^(https?://)?'  # http:// or https://
+        r'([a-zA-Z0-9.-]+)'  # domain
+        r'(\.[a-zA-Z]{2,})'  # .com, .org, etc.
+        r'(/.*)?$'  # path
+    )
+    return re.match(regex, url) is not None
 
 @bot.tree.command(name="event", description="สร้างข้อความกิจกรรมพร้อมเวลานับถอยหลังแบบเรียลไทม์")
 @app_commands.describe(
@@ -249,25 +259,26 @@ async def event_command(
     # ฟังก์ชันอัปเดตรายชื่อในเธรด
     async def update_summary():
         try:
-            # ลบข้อความสรุปก่อนหน้า
+            # ลบข้อความสรุปก่อนหน้า (เฉพาะข้อความปกติ)
             async for msg in thread.history(limit=1):
-                await msg.delete()
-
+                if msg.type == discord.MessageType.default:  # ตรวจสอบว่าเป็นข้อความปกติ
+                    await msg.delete()
+    
             # ดึงข้อมูลผู้ใช้จากปฏิกิริยา
             message = await channel.fetch_message(message.id)
             join_reaction = discord.utils.get(message.reactions, emoji="✅")
             not_join_reaction = discord.utils.get(message.reactions, emoji="❌")
             maybe_reaction = discord.utils.get(message.reactions, emoji="🤔")
-
+    
             join_users = [user async for user in join_reaction.users() if not user.bot] if join_reaction else []
             not_join_users = [user async for user in not_join_reaction.users() if not user.bot] if not_join_reaction else []
             maybe_users = [user async for user in maybe_reaction.users() if not user.bot] if maybe_reaction else []
-
+    
             # สร้างข้อความสรุป
             summary = f"**✅ เข้าร่วม ({len(join_users)}):**\n" + "\n".join([user.mention for user in join_users])
             summary += f"\n\n**❌ ไม่เข้าร่วม ({len(not_join_users)}):**\n" + "\n".join([user.mention for user in not_join_users])
             summary += f"\n\n**🤔 อาจจะมา ({len(maybe_users)}):**\n" + "\n".join([user.mention for user in maybe_users])
-
+    
             # ส่งข้อความสรุปใหม่
             await thread.send(summary)
         except Exception as e:
