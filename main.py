@@ -222,6 +222,8 @@ async def on_member_remove(member):
         logging.info(f"✅ ส่งข้อความลาไปยัง {member.name}'s DM")
     except discord.Forbidden:
         logging.warning(f"❌ ไม่สามารถส่งข้อความให้ {member.name} ได้ (สมาชิกอาจปิดการรับ DM)")
+    except Exception as e:
+        logging.error(f"❌ เกิดข้อผิดพลาด: {e}")
 #=============================================================================================
 # ⚠️ Bot Ready Event
 @bot.event
