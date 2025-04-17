@@ -219,6 +219,18 @@ async def event_command(
         return
 
     # แปลงวันที่และเวลาเป็น datetime
+        # แปลงวันที่และเวลาเป็นภาษาไทย
+    thai_days = ["วันอาทิตย์", "วันจันทร์", "วันอังคาร", "วันพุธ", "วันพฤหัสบดี", "วันศุกร์", "วันเสาร์"]
+    thai_months = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+                   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
+    
+    # ดึงชื่อวันและเดือนในภาษาไทย
+    day_thai = thai_days[event_datetime.weekday()]  # ชื่อวันในภาษาไทย
+    month_thai = thai_months[event_datetime.month - 1]  # ชื่อเดือนในภาษาไทย
+    
+    # แปลงวันที่และเวลาเป็นรูปแบบภาษาไทย
+    thai_datetime = f"{day_thai}ที่ {event_datetime.day} {month_thai} {event_datetime.year + 543} เวลา {event_datetime.strftime('%H:%M')}"
+    
     try:
         # แยกปี พ.ศ. และแปลงเป็น ค.ศ.
         date_part, time_part = datetime_input.split(" ")
@@ -233,11 +245,11 @@ async def event_command(
         )
         return
 
-        # สร้าง Embed สำหรับกิจกรรม
+    # สร้าง Embed สำหรับกิจกรรม
     embed = discord.Embed(
         title=f"📅 {operation}",  # ใช้ชื่อ Operation เป็นหัวข้อ
         description=(
-            f"**🗓️ วันและเวลา:** {datetime_input}\n"
+            f"**🗓️ วันและเวลา:** {thai_datetime}\n"  # ใช้วันที่และเวลาในภาษาไทย
             f"**✏️ Editor by:** {editor}\n"
             f"**🛠️ Preset:** {preset}\n"
             f"**🏷️ Tags:** {tags}"
@@ -246,12 +258,12 @@ async def event_command(
     )
     embed.add_field(
         name="📖 **Story**",
-        value=story if story else "ไม่มีเนื้อเรื่อง",
+        value=story,  # แสดงค่า story โดยตรง
         inline=False
     )
     embed.add_field(
         name="🧥 **Roles**",
-        value=roles if roles else "ไม่มีบทบาทที่กำหนด",
+        value=roles,  # แสดงค่า roles โดยตรง
         inline=False
     )
     if image_url:
@@ -261,27 +273,45 @@ async def event_command(
         icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
     )
 
-    # ส่งข้อความเริ่มต้น
-    message = await channel.send(embed=embed)
-
-    # สร้างเธรดสำหรับสรุปรายชื่อ
-    thread = await message.create_thread(name="📋 รายชื่อผู้เข้าร่วม", auto_archive_duration=1440)
-
-    # เพิ่มอิโมจิ
-    await message.add_reaction("✅")  # เข้าร่วม
-    await message.add_reaction("❌")  # ไม่เข้าร่วม
-    await message.add_reaction("🤔")  # อาจจะมา
-
-    # ฟังก์ชันอัปเดตรายชื่อในเธรด
-    async def update_summary():
-        try:
-            # ลบข้อความสรุปก่อนหน้า (เฉพาะข้อความปกติ)
-            async for msg in thread.history(limit=1):
-                if msg.type == discord.MessageType.default:  # ตรวจสอบว่าเป็นข้อความปกติ
-                    await msg.delete()
+     # ระบบยืนยันก่อนส่งข้อความ
+    confirmation_message = await interaction.response.send_message(
+        "⚠️ คุณต้องการส่งข้อความนี้หรือไม่? กด ✅ เพื่อยืนยัน หรือ ❌ เพื่อยกเลิก",
+        embed=embed,
+        ephemeral=True
+    )
     
+    # เพิ่มปฏิกิริยา (Reaction) สำหรับการยืนยัน
+    await confirmation_message.add_reaction("✅")
+    await confirmation_message.add_reaction("❌")
+    
+    # รอการตอบสนองจากผู้ใช้
+    def check(reaction, user):
+        return user == interaction.user and str(reaction.emoji) in ["✅", "❌"]
+    
+    try:
+        reaction, user = await bot.wait_for("reaction_add", timeout=60.0, check=check)
+        if str(reaction.emoji) == "✅":
+            # ส่งข้อความไปยังช่องที่กำหนด
+            message = await channel.send(embed=embed)
+    
+            # สร้างเธรดสำหรับสรุปรายชื่อ
+            thread = await message.create_thread(name="📋 รายชื่อผู้เข้าร่วม", auto_archive_duration=1440)
+    
+            # เพิ่มอิโมจิ
+            await message.add_reaction("✅")  # เข้าร่วม
+            await message.add_reaction("❌")  # ไม่เข้าร่วม
+            await message.add_reaction("🤔")  # อาจจะมา
+    
+            await interaction.followup.send("✅ ข้อความถูกส่งเรียบร้อยแล้ว!", ephemeral=True)
+        else:
+            await interaction.followup.send("❌ การส่งข้อความถูกยกเลิก", ephemeral=True)
+    except asyncio.TimeoutError:
+        await interaction.followup.send("⏰ หมดเวลาการยืนยัน", ephemeral=True)
+        
+      # ฟังก์ชันอัปเดตรายชื่อในเธรด
+    async def update_summary(message, thread):
+        try:
             # ดึงข้อมูลผู้ใช้จากปฏิกิริยา
-            message = await channel.fetch_message(message.id)
             join_reaction = discord.utils.get(message.reactions, emoji="✅")
             not_join_reaction = discord.utils.get(message.reactions, emoji="❌")
             maybe_reaction = discord.utils.get(message.reactions, emoji="🤔")
@@ -295,7 +325,7 @@ async def event_command(
             summary += f"\n\n**❌ ไม่เข้าร่วม ({len(not_join_users)}):**\n" + "\n".join([user.mention for user in not_join_users])
             summary += f"\n\n**🤔 อาจจะมา ({len(maybe_users)}):**\n" + "\n".join([user.mention for user in maybe_users])
     
-            # ส่งข้อความสรุปใหม่
+            # ส่งข้อความสรุปใหม่ (เพิ่มต่อท้าย)
             await thread.send(summary)
         except Exception as e:
             logging.error(f"❌ เกิดข้อผิดพลาดในการอัปเดตรายชื่อ: {e}")
