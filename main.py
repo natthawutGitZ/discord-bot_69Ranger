@@ -302,11 +302,15 @@ async def event_command(
     
     # ในคำสั่ง /event
     confirmation_view = ConfirmationView(interaction)
-    await interaction.response.send_message(
+    
+    # ใช้ interaction.response.defer() เพื่อบอก Discord ว่าบอทกำลังดำเนินการ
+    await interaction.response.defer(ephemeral=True)
+    
+    # ส่งข้อความยืนยันพร้อมปุ่ม
+    await interaction.followup.send(
         "⚠️ คุณต้องการส่งข้อความนี้หรือไม่?",
         embed=embed,
-        view=confirmation_view,
-        ephemeral=True  # ทำให้ข้อความมองเห็นได้เฉพาะผู้ใช้ที่เรียกคำสั่ง
+        view=confirmation_view
     )
     
     # รอการตอบสนองจากผู้ใช้
@@ -322,11 +326,7 @@ async def event_command(
         # สร้างเธรดสำหรับสรุปรายชื่อ
         thread = await message.create_thread(name="📋 รายชื่อผู้เข้าร่วม", auto_archive_duration=1440)
     
-        # เพิ่มปฏิกิริยา (Reaction)
-        await message.add_reaction("✅")  # เข้าร่วม
-        await message.add_reaction("❌")  # ไม่เข้าร่วม
-        await message.add_reaction("🤔")  # อาจจะมา
-    
+        # เพิ่มปุ่มสำหรับการตอบกลับ
         await interaction.followup.send("✅ ข้อความถูกส่งเรียบร้อยแล้ว!", ephemeral=True)
     else:
         await interaction.followup.send("❌ การส่งข้อความถูกยกเลิก", ephemeral=True)
