@@ -248,13 +248,14 @@ async def event_command(
     embed = discord.Embed(
         title=f"📅 {operation}",  # ใช้ชื่อ Operation เป็นหัวข้อ
         description=(
-            f"**🗓️ วันและเวลา:** {thai_datetime}\n"  # ใช้วันที่และเวลาในภาษาไทย
-            f"**✏️ Editor by:** {editor}\n"
-            f"**🛠️ Preset:** {preset}\n"
+            f"**🗓️ วันและเวลา:** {thai_datetime}\n\n"  # ใช้วันที่และเวลาในภาษาไทย
+            f"**✏️ Editor by:** {editor}\n\n"
+            f"**🛠️ Preset:** {preset}\n\n"
             f"**🏷️ Tags:** {tags}"
         ),
         color=discord.Color.blue()
     )
+
     embed.add_field(
         name="📖 **Story**",
         value=story,  # แสดงค่า story โดยตรง
