@@ -243,7 +243,7 @@ async def event_command(
     
     # แปลงวันที่และเวลาเป็นรูปแบบภาษาไทย
     thai_datetime = f"{day_thai}ที่ {event_datetime.day} {month_thai} {event_datetime.year + 543} เวลา {event_datetime.strftime('%H:%M')}"
-
+    
     # สร้าง Embed สำหรับกิจกรรม
     embed = discord.Embed(
         title=f"📅 {operation}",  # ใช้ชื่อ Operation เป็นหัวข้อ
@@ -271,12 +271,11 @@ async def event_command(
         text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
         icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
     )
-
-     # ระบบยืนยันก่อนส่งข้อความ
-    confirmation_message = await interaction.response.send_message(
+    
+    # ระบบยืนยันก่อนส่งข้อความ
+    confirmation_message = await interaction.followup.send(
         "⚠️ คุณต้องการส่งข้อความนี้หรือไม่? กด ✅ เพื่อยืนยัน หรือ ❌ เพื่อยกเลิก",
-        embed=embed,
-        ephemeral=True
+        embed=embed
     )
     
     # เพิ่มปฏิกิริยา (Reaction) สำหรับการยืนยัน
