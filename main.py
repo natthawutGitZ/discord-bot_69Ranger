@@ -233,17 +233,33 @@ async def event_command(
         )
         return
 
-    # สร้าง Embed สำหรับกิจกรรม
+        # สร้าง Embed สำหรับกิจกรรม
     embed = discord.Embed(
-        title=f"📅 {datetime_input}",
-        description=f"**Operation:** {operation}\n**Editor by:** {editor}\n**Preset:** {preset}\n**Tags:** {tags}",
+        title=f"📅 {operation}",  # ใช้ชื่อ Operation เป็นหัวข้อ
+        description=(
+            f"**🗓️ วันและเวลา:** {datetime_input}\n"
+            f"**✏️ Editor by:** {editor}\n"
+            f"**🛠️ Preset:** {preset}\n"
+            f"**🏷️ Tags:** {tags}"
+        ),
         color=discord.Color.blue()
     )
-    embed.add_field(name="📖 Story", value=story, inline=False)
-    embed.add_field(name="🧥 Roles", value=roles, inline=False)
+    embed.add_field(
+        name="📖 **Story**",
+        value=story if story else "ไม่มีเนื้อเรื่อง",
+        inline=False
+    )
+    embed.add_field(
+        name="🧥 **Roles**",
+        value=roles if roles else "ไม่มีบทบาทที่กำหนด",
+        inline=False
+    )
     if image_url:
         embed.set_image(url=image_url)
-    embed.set_footer(text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell")
+    embed.set_footer(
+        text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
+        icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
+    )
 
     # ส่งข้อความเริ่มต้น
     message = await channel.send(embed=embed)
@@ -308,7 +324,7 @@ async def event_command(
         minutes, seconds = divmod(remainder, 60)
         embed.set_field_at(
             index=0,
-            name="⏳ เวลาที่เหลือ",
+            name="⏳ เวลาก่อนเริ่มกิจกรรม",
             value=f"{hours} ชั่วโมง {minutes} นาที {seconds} วินาที",
             inline=False
         )
