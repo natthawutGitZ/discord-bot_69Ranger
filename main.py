@@ -29,7 +29,7 @@ intents.message_content = True
 intents.members = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# Timezone Configuration
+# ตั้งค่า Timezone
 THAI_TZ = pytz.timezone("Asia/Bangkok")
 
 #=============================================================================================
@@ -218,8 +218,9 @@ async def event_command(
         await interaction.response.send_message("❌ คุณไม่มีสิทธิ์ใช้คำสั่งนี้ (ต้องเป็นแอดมิน)", ephemeral=True)
         return
 
+    
+    # แปลงวันที่และเวลา
     try:
-        # แยกปี พ.ศ. และแปลงเป็น ค.ศ.
         date_part, time_part = datetime_input.split(" ")
         day, month, year = map(int, date_part.split("-"))
         year -= 543  # แปลงปี พ.ศ. เป็น ค.ศ.
@@ -231,7 +232,6 @@ async def event_command(
             ephemeral=True
         )
         return
-    
     # แปลงวันที่และเวลาเป็นภาษาไทย
     thai_days = ["วันอาทิตย์", "วันจันทร์", "วันอังคาร", "วันพุธ", "วันพฤหัสบดี", "วันศุกร์", "วันเสาร์"]
     thai_months = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -276,41 +276,72 @@ async def event_command(
         icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
     )
     
-    # ระบบยืนยันก่อนส่งข้อความ
-    confirmation_message = await interaction.followup.send(
-        "⚠️ คุณต้องการส่งข้อความนี้หรือไม่? กด ✅ เพื่อยืนยัน หรือ ❌ เพื่อยกเลิก",
-        embed=embed
+    from discord.ui import View, Button
+    
+    class ConfirmationView(View):
+        def __init__(self, interaction: discord.Interaction):
+            super().__init__(timeout=60)  # ตั้งเวลา Timeout 60 วินาที
+            self.interaction = interaction
+            self.value = None
+    
+        @discord.ui.button(label="✅ ยืนยัน", style=discord.ButtonStyle.green)
+        async def confirm(self, interaction: discord.Interaction, button: Button):
+            if interaction.user != self.interaction.user:
+                await interaction.response.send_message("❌ คุณไม่มีสิทธิ์กดปุ่มนี้", ephemeral=True)
+                return
+            self.value = True
+            self.stop()
+    
+        @discord.ui.button(label="❌ ยกเลิก", style=discord.ButtonStyle.red)
+        async def cancel(self, interaction: discord.Interaction, button: Button):
+            if interaction.user != self.interaction.user:
+                await interaction.response.send_message("❌ คุณไม่มีสิทธิ์กดปุ่มนี้", ephemeral=True)
+                return
+            self.value = False
+            self.stop()
+    
+    # ในคำสั่ง /event
+    confirmation_view = ConfirmationView(interaction)
+    await interaction.response.send_message(
+        "⚠️ คุณต้องการส่งข้อความนี้หรือไม่?",
+        embed=embed,
+        view=confirmation_view,
+        ephemeral=True  # ทำให้ข้อความมองเห็นได้เฉพาะผู้ใช้ที่เรียกคำสั่ง
     )
     
+    # รอการตอบสนองจากผู้ใช้
+    await confirmation_view.wait()
+    
+    if confirmation_view.value is None:
+        await interaction.followup.send("⏰ หมดเวลาการยืนยัน", ephemeral=True)
+        return
+    elif confirmation_view.value:
+        # ส่งข้อความไปยังช่องที่กำหนด
+        message = await channel.send(embed=embed)
+    
+        # สร้างเธรดสำหรับสรุปรายชื่อ
+        thread = await message.create_thread(name="📋 รายชื่อผู้เข้าร่วม", auto_archive_duration=1440)
+    
+        # เพิ่มปฏิกิริยา (Reaction)
+        await message.add_reaction("✅")  # เข้าร่วม
+        await message.add_reaction("❌")  # ไม่เข้าร่วม
+        await message.add_reaction("🤔")  # อาจจะมา
+    
+        await interaction.followup.send("✅ ข้อความถูกส่งเรียบร้อยแล้ว!", ephemeral=True)
+    else:
+        await interaction.followup.send("❌ การส่งข้อความถูกยกเลิก", ephemeral=True)
+
     # เพิ่มปฏิกิริยา (Reaction) สำหรับการยืนยัน
     await confirmation_message.add_reaction("✅")
+    await asyncio.sleep(0.5)  # หน่วงเวลา 0.5 วินาทีก่อนเพิ่มปฏิกิริยาถัดไป
     await confirmation_message.add_reaction("❌")
+    await asyncio.sleep(0.5)
+    await confirmation_message.add_reaction("🤔")
     
-    # รอการตอบสนองจากผู้ใช้
-    def check(reaction, user):
-        return user == interaction.user and str(reaction.emoji) in ["✅", "❌"]
+    # เรียกใช้งานฟังก์ชัน update_summary พร้อมส่งอาร์กิวเมนต์
+    await update_summary(message, thread)
     
-    try:
-        reaction, user = await bot.wait_for("reaction_add", timeout=60.0, check=check)
-        if str(reaction.emoji) == "✅":
-            # ส่งข้อความไปยังช่องที่กำหนด
-            message = await channel.send(embed=embed)
-    
-            # สร้างเธรดสำหรับสรุปรายชื่อ
-            thread = await message.create_thread(name="📋 รายชื่อผู้เข้าร่วม", auto_archive_duration=1440)
-    
-            # เพิ่มอิโมจิ
-            await message.add_reaction("✅")  # เข้าร่วม
-            await message.add_reaction("❌")  # ไม่เข้าร่วม
-            await message.add_reaction("🤔")  # อาจจะมา
-    
-            await interaction.followup.send("✅ ข้อความถูกส่งเรียบร้อยแล้ว!", ephemeral=True)
-        else:
-            await interaction.followup.send("❌ การส่งข้อความถูกยกเลิก", ephemeral=True)
-    except asyncio.TimeoutError:
-        pass  # ไม่ทำอะไรเมื่อหมดเวลา
-
-      # ฟังก์ชันอัปเดตรายชื่อในเธรด
+    # ฟังก์ชัน update_summary
     async def update_summary(message, thread):
         try:
             # ดึงข้อมูลผู้ใช้จากปฏิกิริยา
@@ -349,9 +380,9 @@ async def event_command(
             )
             await message.edit(embed=embed)
     
-        elif 0 <= time_remaining <= 14400:  # ระหว่าง 0 ถึง 4 ชั่วโมง (4 ชั่วโมง = 14400 วินาที)
+        elif 0 <= time_remaining <= 14400:  # ระหว่าง 0 ถึง 4 ชั่วโมง
             # ระหว่างดำเนินการ
-            elapsed_time = abs(time_remaining)  # เวลาที่ผ่านไปตั้งแต่เริ่มกิจกรรม
+            elapsed_time = abs(time_remaining)
             hours, remainder = divmod(int(elapsed_time), 3600)
             minutes, seconds = divmod(remainder, 60)
             embed.set_field_at(
@@ -371,7 +402,10 @@ async def event_command(
                 inline=False
             )
             await message.edit(embed=embed)
-            break  # ออกจากลูปเมื่อกิจกรรมสิ้นสุด
+            break
+    
+        # อัปเดตสรุปรายชื่อ
+        await update_summary(message, thread)
     
         # รอ 1 วินาทีก่อนอัปเดตครั้งถัดไป
         await asyncio.sleep(1)
