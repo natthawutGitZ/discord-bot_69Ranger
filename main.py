@@ -135,11 +135,13 @@ async def event_timer(event_id):
         try:
             user_id = int(user_mention.replace("<@!", "").replace("<@", "").replace(">", ""))
             user = await bot.fetch_user(user_id)
-            await user.send(f"🔔 อีก 10 นาทีจะถึงเวลากิจกรรม\n**{event['operation']}** กำลังจะเริ่มแล้ว!")
+            message_text = f"🔔 อีก 10 นาทีจะถึงเวลากิจกรรม\n**{event['operation']}** กำลังจะเริ่มแล้ว!"
+            await user.send(message_text)
         except Exception as e:
             print(f"[ERROR] Failed to DM user {user_mention}: {e}")
+            await event['thread'].send(f"{user_mention} 🔔 อีก 10 นาทีจะถึงเวลากิจกรรม **{event['operation']}** กำลังจะเริ่มแล้ว!")
 
-    await asyncio.sleep(600)
+    # อัปเดตสถานะเป็น "กำลังดำเนินการ" หลังแจ้งเตือนทันที
     embed = event['embed']
     embed.title = f"🟡 {event['operation']} (กำลังดำเนินการ)"
     await event['message'].edit(embed=embed, view=None)
@@ -183,15 +185,11 @@ async def create_event(interaction: discord.Interaction,
         return
 
     timestamp = int(dt.timestamp())
-    weekday = thai_days[dt.weekday()]
-    month_th = thai_months[dt.month - 1]
-    datetime_th = f"{weekday}ที่ {dt.day} {month_th} {dt.year+543} เวลา {dt.hour:02}:{dt.minute:02} น."
-
     counts_text = f"✅ 0 คน | ❌ 0 คน | ❓ 0 คน"
 
     embed = discord.Embed(
         title=f"📌 {operation}",
-        description=f"**วันเวลา:** {datetime_th}\n<t:{timestamp}:F> | <t:{timestamp}:R>\n**Editor:** {editor}\n**Preset:** {preset}\n**Roles:** {roles}\n**Tags:** {tags}\n\n📖 **Story:**\n{story}",
+        description=f"<t:{timestamp}:F> | <t:{timestamp}:R>\n**Editor:** {editor}\n**Preset:** {preset}\n**Roles:** {roles}\n**Tags:** {tags}\n\n📖 **Story:**\n{story}",
         color=discord.Color.green()
     )
     embed.add_field(name="จำนวนผู้ตอบรับ", value=counts_text, inline=False)
@@ -226,6 +224,7 @@ async def create_event(interaction: discord.Interaction,
     view = EventView(msg, event_id)
     await msg.edit(embed=embed, view=view)
     bot.loop.create_task(event_timer(event_id))
+    
 
 
 #=============================================================================================
