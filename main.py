@@ -302,7 +302,7 @@ async def help_command(interaction: discord.Interaction):
         name="📩 คำสั่งสำหรับแอดมิน",
         value=(
             "`/dm` - ส่งข้อความ DM ให้สมาชิกใน Role\n"
-            "`/say` - ส่งข้อความไปยังห้องที่กำหนด"
+            "`/say` - ส่งข้อความไปยังห้องที่กำหนด\n"
             "`/event` - สร้างeventห้องที่กำหนด"
         ),
         inline=False
