@@ -44,7 +44,7 @@ THAI_TZ = pytz.timezone("Asia/Bangkok")
 # ⚙️ General Commands
 #=============================================================================================
 # ⚠️ /Event สร้างกิจกรรมพร้อมปุ่มตอบรับ
-thai_days = ["วันอาทิตย์", "วันจันทร์", "วันอังคาร", "วันพุธ", "วันพฤหัสบดี", "วันศุกร์", "วันเสาร์"]
+thai_days = ["วันจันทร์", "วันอังคาร", "วันพุธ", "วันพฤหัสบดี", "วันศุกร์", "วันเสาร์", "วันอาทิตย์"]
 thai_months = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
                "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
 
@@ -62,7 +62,10 @@ class EventView(View):
         counts = f"✅ {len(event['joined'])} คน | ❌ {len(event['declined'])} คน | ❓ {len(event['maybe'])} คน"
 
         embed = event['embed']
-        embed.set_field_at(0, name="จำนวนผู้ตอบรับ", value=counts, inline=False)
+        if embed.fields:
+            embed.set_field_at(0, name="จำนวนผู้ตอบรับ", value=counts, inline=False)
+        else:
+            embed.add_field(name="จำนวนผู้ตอบรับ", value=counts, inline=False)
         await self.message.edit(embed=embed, view=self)
         await update_summary_embed(event)
 
@@ -132,7 +135,7 @@ async def event_timer(event_id):
         try:
             user_id = int(user_mention.replace("<@!", "").replace("<@", "").replace(">", ""))
             user = await bot.fetch_user(user_id)
-            await user.send(f"🔔 อีก 10 นาทีจะถึงเวลากิจกรรม\n**{event['operation']}** กำลังจะเริ่มแล้ว! \nโปรดเข้า TS3 : 69rangergtm.ts3thai.net")
+            await user.send(f"🔔 อีก 10 นาทีจะถึงเวลากิจกรรม\n**{event['operation']}** กำลังจะเริ่มแล้ว!")
         except Exception as e:
             print(f"[ERROR] Failed to DM user {user_mention}: {e}")
 
@@ -184,13 +187,15 @@ async def create_event(interaction: discord.Interaction,
     month_th = thai_months[dt.month - 1]
     datetime_th = f"{weekday}ที่ {dt.day} {month_th} {dt.year+543} เวลา {dt.hour:02}:{dt.minute:02} น."
 
-    counts_text = "✅เข้าร่วม 0 คน | ❌ไม่เข้าร่วม 0 คน | ❓อาจจะมา 0 คน"
+    counts_text = f"✅ 0 คน | ❌ 0 คน | ❓ 0 คน"
 
     embed = discord.Embed(
         title=f"📌 {operation}",
-        description=f"<t:{timestamp}:F> | <t:{timestamp}:R>\n**Editor:** {editor}\n**Preset:** {preset}\n**Roles:** {roles}\n**Tags:** {tags}\n\n📖 **Story:**\n{story}",
+        description=f"**วันเวลา:** {datetime_th}\n<t:{timestamp}:F> | <t:{timestamp}:R>\n**Editor:** {editor}\n**Preset:** {preset}\n**Roles:** {roles}\n**Tags:** {tags}\n\n📖 **Story:**\n{story}",
         color=discord.Color.green()
     )
+    embed.add_field(name="จำนวนผู้ตอบรับ", value=counts_text, inline=False)
+
     if image_url:
         embed.set_image(url=image_url)
 
@@ -221,6 +226,7 @@ async def create_event(interaction: discord.Interaction,
     view = EventView(msg, event_id)
     await msg.edit(embed=embed, view=view)
     bot.loop.create_task(event_timer(event_id))
+
 
 #=============================================================================================
 #⚠️ /Help แสดงคำสั่งทั้งหมดของบอท
