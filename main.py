@@ -180,8 +180,8 @@ async def event_timer(event_id):
         preset="Mod ที่ใช้งาน (เช่น69Ranger RE Preset Edit V5)",
         tags="แท็กผู้เข้าร่วม (เช่น @everyone)",
         story="เนื้อเรื่องของกิจกรรม",
-        secondary_story="เนื้อเรื่องรองของกิจกรรม เอาไว้ระบุชื่อ HVT ก็ได้ (ถ้ามี) ",
         roles="บทบาทที่ใช้",
+        secondary_story="เนื้อเรื่องรองของกิจกรรม เอาไว้ระบุชื่อ HVT ก็ได้ (ถ้ามี) ",
         addmod="Mod ที่ต้องการเพิ่ม (ถ้ามี)",
         image_url="URL ของรูปภาพกิจกรรม (ถ้ามี)"
     )
