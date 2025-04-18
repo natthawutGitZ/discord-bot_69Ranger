@@ -59,11 +59,9 @@ class EventView(View):
     async def update_counts(self):
         event = events[self.event_id]
         counts = f"✅ {len(event['joined'])} คน | ❌ {len(event['declined'])} คน | ❓ {len(event['maybe'])} คน"
-        timestamp_full = f"<t:{int(event['timestamp'])}:F>"
-        timestamp_relative = f"<t:{int(event['timestamp'])}:R>"
 
         embed = event['embed']
-        embed.set_footer(text=counts + f"\n{timestamp_full} | {timestamp_relative}")
+        embed.set_footer(text=counts)
         await self.message.edit(embed=embed, view=self)
         await update_summary_embed(event)
 
@@ -98,13 +96,19 @@ class EventView(View):
         await self.handle_response(interaction, 'maybe')
 
 async def update_summary_embed(event):
-    joined, declined, maybe = event['joined'], event['declined'], event['maybe']
-    rows = []
-    for j, d, m in zip_longest(joined, declined, maybe, fillvalue=""):
-        rows.append(f"{j:<10} | {d:<10} | {m}")
-    table = "**เข้าร่วม | ไม่เข้าร่วม | อาจจะเข้าร่วม**\n" + "\n".join(rows)
+    joined = event['joined']
+    declined = event['declined']
+    maybe = event['maybe']
 
-    embed = discord.Embed(title="📋 สรุปการตอบรับ", description=table, color=discord.Color.blue())
+    joined_str = "\n".join(joined) if joined else "-"
+    declined_str = "\n".join(declined) if declined else "-"
+    maybe_str = "\n".join(maybe) if maybe else "-"
+
+    embed = discord.Embed(title="📋 สรุปการตอบรับ", color=discord.Color.blue())
+    embed.add_field(name="เข้าร่วม", value=joined_str, inline=True)
+    embed.add_field(name="ไม่เข้าร่วม", value=declined_str, inline=True)
+    embed.add_field(name="อาจจะเข้าร่วม", value=maybe_str, inline=True)
+
     if 'thread_message' in event:
         try:
             await event['thread_message'].edit(embed=embed)
@@ -177,16 +181,20 @@ async def create_event(interaction: discord.Interaction,
 
     embed = discord.Embed(
         title=f"📌 {operation}",
-        description=f"**วันเวลา:** {datetime_th} (<t:{timestamp}:R>)\n**Editor:** {editor}\n**Preset:** {preset}\n**Roles:** {roles}\n\n📖 **Story:**\n{story}",
+        description=f"**วันเวลา:** {datetime_th}\n**Editor:** {editor}\n**Preset:** {preset}\n**Roles:** {roles}\n**Tags:** {tags}\n\n📖 **Story:**\n{story}",
         color=discord.Color.green()
     )
     if image_url:
         embed.set_image(url=image_url)
 
-    embed.set_footer(text=f"✅ 0 คน | ❌ 0 คน | ❓ 0 คน\n<t:{timestamp}:F> | <t:{timestamp}:R>")
+    embed.set_footer(
+        text=f"✅เข้าร่วม 0 คน | ❌ไม่เข้าร่วม 0 คน | ❓อาจจะมา 0 คน\n69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
+        icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
+                    
+         )
 
     await interaction.response.send_message("✅ ยืนยันการสร้างกิจกรรมแล้ว!", ephemeral=True)
-    msg = await channel.send(tags, embed=embed, view=None)
+    msg = await channel.send(embed=embed, view=None)
 
     thread = await msg.create_thread(name=operation)
     event_id = str(uuid.uuid4())
@@ -209,10 +217,6 @@ async def create_event(interaction: discord.Interaction,
     await msg.edit(embed=embed, view=view)
     bot.loop.create_task(event_timer(event_id))
 #=============================================================================================
-
-
-
-
 #⚠️ /Help แสดงคำสั่งทั้งหมดของบอท
 @bot.tree.command(name="help", description="แสดงคำสั่งทั้งหมดของบอท")
 async def help_command(interaction: discord.Interaction):
