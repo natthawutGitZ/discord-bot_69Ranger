@@ -281,7 +281,6 @@ async def create_event(interaction: discord.Interaction,
     else:
         await interaction.followup.send("❌ การส่งข้อความถูกยกเลิก", ephemeral=True)
 
-
 #=============================================================================================
 #⚠️ /Help แสดงคำสั่งทั้งหมดของบอท
 @bot.tree.command(name="help", description="แสดงคำสั่งทั้งหมดของบอท")
