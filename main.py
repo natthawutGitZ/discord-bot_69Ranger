@@ -303,7 +303,7 @@ async def event_command(
     # ในคำสั่ง /event
     confirmation_view = ConfirmationView(interaction)
     
-    # ใช้ interaction.response.defer() เพื่อบอก Discord ว่าบอทกำลังดำเนินการ
+    # ใช้ interaction.response.defer() เพียงครั้งเดียว
     await interaction.response.defer(ephemeral=True)
     
     # ส่งข้อความยืนยันพร้อมปุ่ม
