@@ -232,18 +232,18 @@ async def event_command(
             ephemeral=True
         )
         return
+    
     # แปลงวันที่และเวลาเป็นภาษาไทย
     thai_days = ["วันอาทิตย์", "วันจันทร์", "วันอังคาร", "วันพุธ", "วันพฤหัสบดี", "วันศุกร์", "วันเสาร์"]
     thai_months = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
                    "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
     
-    # ดึงชื่อวันและเดือนในภาษาไทย
     day_thai = thai_days[event_datetime.weekday()]  # ชื่อวันในภาษาไทย
     month_thai = thai_months[event_datetime.month - 1]  # ชื่อเดือนในภาษาไทย
-    
-    # แปลงวันที่และเวลาเป็นรูปแบบภาษาไทย
     thai_datetime = f"{day_thai}ที่ {event_datetime.day} {month_thai} {event_datetime.year + 543} เวลา {event_datetime.strftime('%H:%M')}"
     
+    # ตรวจสอบค่า story
+    story = story if story else "ไม่มีเนื้อเรื่อง"
     
     # สร้าง Embed สำหรับกิจกรรม
     embed = discord.Embed(
@@ -256,10 +256,10 @@ async def event_command(
         ),
         color=discord.Color.blue()
     )
-
+    
     embed.add_field(
         name="📖 **Story**",
-        value=story,  # แสดงค่า story โดยตรง
+        value=story,  # แสดงค่า story หรือข้อความเริ่มต้น
         inline=False
     )
     embed.add_field(
@@ -336,32 +336,37 @@ async def event_command(
     await asyncio.sleep(0.5)
     await message.add_reaction("🤔")
     
-    # เรียกใช้งานฟังก์ชัน update_summary พร้อมส่งอาร์กิวเมนต์
-  
+        # เรียกใช้งานฟังก์ชัน update_summary พร้อมส่งอาร์กิวเมนต์
+    await update_summary(message, thread)
+    
+    # ฟังก์ชัน update_summary
     async def update_summary(message, thread):
-     try:
+        try:
+            # ดึงข้อมูลผู้ใช้จากปฏิกิริยา
             join_reaction = discord.utils.get(message.reactions, emoji="✅")
             not_join_reaction = discord.utils.get(message.reactions, emoji="❌")
             maybe_reaction = discord.utils.get(message.reactions, emoji="🤔")
-
+    
             join_users = [user async for user in join_reaction.users() if not user.bot] if join_reaction else []
             not_join_users = [user async for user in not_join_reaction.users() if not user.bot] if not_join_reaction else []
             maybe_users = [user async for user in maybe_reaction.users() if not user.bot] if maybe_reaction else []
-
+    
+            # สร้างข้อความสรุป
             summary = f"**✅ เข้าร่วม ({len(join_users)}):**\n" + "\n".join([user.mention for user in join_users])
             summary += f"\n\n**❌ ไม่เข้าร่วม ({len(not_join_users)}):**\n" + "\n".join([user.mention for user in not_join_users])
             summary += f"\n\n**🤔 อาจจะมา ({len(maybe_users)}):**\n" + "\n".join([user.mention for user in maybe_users])
-
+    
+            # ส่งข้อความสรุปใหม่ (เพิ่มต่อท้าย)
             await thread.send(summary)
-     except Exception as e:
+        except Exception as e:
             logging.error(f"❌ เกิดข้อผิดพลาดในการอัปเดตรายชื่อ: {e}")
 
 
-        # ตั้งเวลานับถอยหลัง
+    # ตั้งเวลานับถอยหลัง
     while True:
         now = datetime.now(THAI_TZ)
         time_remaining = (event_datetime - now).total_seconds()
-    
+
         if time_remaining > 0:
             # ก่อนถึงเวลาเริ่มกิจกรรม
             hours, remainder = divmod(int(time_remaining), 3600)
@@ -373,7 +378,7 @@ async def event_command(
                 inline=False
             )
             await message.edit(embed=embed)
-    
+
         elif 0 <= time_remaining <= 14400:  # ระหว่าง 0 ถึง 4 ชั่วโมง
             # ระหว่างดำเนินการ
             elapsed_time = abs(time_remaining)
@@ -386,7 +391,7 @@ async def event_command(
                 inline=False
             )
             await message.edit(embed=embed)
-    
+
         else:
             # หลังจาก 4 ชั่วโมง (กิจกรรมสิ้นสุด)
             embed.set_field_at(
@@ -397,10 +402,10 @@ async def event_command(
             )
             await message.edit(embed=embed)
             break
-    
+
         # อัปเดตสรุปรายชื่อ
         await update_summary(message, thread)
-    
+
         # รอ 1 วินาทีก่อนอัปเดตครั้งถัดไป
         await asyncio.sleep(1)
     
