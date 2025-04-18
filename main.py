@@ -171,96 +171,80 @@ async def event_timer(event_id):
     await event['message'].edit(embed=embed)
 
 
-    @tree.command(name="event", description="สร้างกิจกรรมพร้อมปุ่มตอบรับ")
-    @app_commands.describe(
-        channel="เลือกห้องที่จะโพสต์กิจกรรม",
-        datetime_input="วันและเวลาของกิจกรรม (เช่น 01-01-2568 20:30)",
-        operation="ชื่อ Operation (เช่น The Darknight Ep.4)",
-        editor="ชื่อผู้แก้ไข (เช่น @Silver BlackWell)",
-        preset="Mod ที่ใช้งาน (เช่น69Ranger RE Preset Edit V5)",
-        tags="แท็กผู้เข้าร่วม (เช่น @everyone)",
-        story="เนื้อเรื่องของกิจกรรม",
-        roles="บทบาทที่ใช้",
-        secondary_story="เนื้อเรื่องรองของกิจกรรม เอาไว้ระบุชื่อ HVT ก็ได้ (ถ้ามี) ",
-        addmod="Mod ที่ต้องการเพิ่ม (ถ้ามี)",
-        image_url="URL ของรูปภาพกิจกรรม (ถ้ามี)"
+@tree.command(name="event", description="สร้างกิจกรรมพร้อมปุ่มตอบรับ")
+@app_commands.describe(
+    channel="เลือกห้องที่จะโพสต์กิจกรรม",
+    datetime_input="วันและเวลาของกิจกรรม (เช่น 01-01-2568 20:30)",
+    operation="ชื่อ Operation (เช่น The Darknight Ep.4)",
+    editor="ชื่อผู้แก้ไข (เช่น @Silver BlackWell)",
+    preset="Mod ที่ใช้งาน (เช่น69Ranger RE Preset Edit V5)",
+    tags="แท็กผู้เข้าร่วม (เช่น @everyone)",
+    story="เนื้อเรื่องของกิจกรรม",
+    roles="บทบาทที่ใช้",
+    image_url="URL ของรูปภาพกิจกรรม (ถ้ามี)"
+)
+async def create_event(interaction: discord.Interaction, 
+    channel: discord.TextChannel, 
+    datetime_input: str,
+    operation: str, 
+    editor: str, 
+    preset: str, 
+    tags: str, 
+    story: str, 
+    roles: str, 
+    image_url: str = None):
+
+    try:
+        day, month, year_time = datetime_input.split("-")
+        year, time = year_time.split(" ")
+        hour, minute = time.split(":" )
+        year = int(year) - 543
+        dt = datetime(int(year), int(month), int(day), int(hour), int(minute))
+        dt = bangkok_tz.localize(dt)
+    except:
+        await interaction.response.send_message("❌ รูปแบบวันที่ไม่ถูกต้อง ใช้: 01-01-2568 20:30", ephemeral=True)
+        return
+
+    timestamp = int(dt.timestamp())
+    counts_text = f"✅ 0 คน | ❌ 0 คน | ❓ 0 คน"
+
+    embed = discord.Embed(
+        title=f"📌 {operation}",
+        description=f"<t:{timestamp}:F> | <t:{timestamp}:R>\n**Editor:** {editor}\n**Preset:** {preset}\n**Roles:** {roles}\n**Tags:** {tags}\n\n📖 **Story:**\n{story}",
+        color=discord.Color.red()
     )
-    async def create_event(interaction: discord.Interaction, 
-        channel: discord.TextChannel, 
-        datetime_input: str,
-        operation: str, 
-        editor: str, 
-        preset: str, 
-        tags: str, 
-        story: str,
-        roles: str,  
-        secondary_story: Optional[str] = None,
-        addmod: Optional[str] = None,
-        image_url: Optional[str] = None):
+    embed.add_field(name="จำนวนผู้ตอบรับ", value=counts_text, inline=False)
 
-        try:
-            day, month, year_time = datetime_input.split("-")
-            year, time = year_time.split(" ")
-            hour, minute = time.split(":")
-            year = int(year) - 543
-            dt = datetime(int(year), int(month), int(day), int(hour), int(minute))
-            dt = bangkok_tz.localize(dt)
-        except:
-            await interaction.response.send_message("❌ รูปแบบวันที่ไม่ถูกต้อง ใช้: 01-01-2568 20:30", ephemeral=True)
-            return
+    if image_url:
+        embed.set_image(url=image_url)
 
-        timestamp = int(dt.timestamp())
-        counts_text = f"✅ 0 คน | ❌ 0 คน | ❓ 0 คน"
+    embed.set_footer(
+        text=f"69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
+        icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
+    )
+    await interaction.response.send_message("✅ ยืนยันการสร้างกิจกรรมแล้ว!", ephemeral=True)
+    msg = await channel.send(embed=embed, view=None)
 
-        # สร้าง Embed
-        embed = discord.Embed(
-            title=f"📌 {operation}",
-            description=(
-                f"<t:{timestamp}:F> | <t:{timestamp}:R>\n"
-                f"**Editor:** {editor}\n"
-                f"**Preset:** {preset}\n"
-                f"**AddMod:** {addmod if addmod else 'ไม่มี'}\n"
-                f"**Tags:** {tags}\n\n"
-                f"📖 **Story:**\n{story}\n\n"
-                f"📖 **Secondary Story:**\n{secondary_story if secondary_story else 'ไม่มีเนื้อเรื่องรอง'}\n\n"
-                f"**Roles:** {roles}\n"
-            ),
-            color=discord.Color.red()
-        )
-        embed.add_field(name="จำนวนผู้ตอบรับ", value=counts_text, inline=False)
-
-        if image_url:
-            embed.set_image(url=image_url)
-
-        embed.set_footer(
-            text=f"69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
-            icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
-        )
-        await interaction.response.send_message("✅ ยืนยันการสร้างกิจกรรมแล้ว!", ephemeral=True)
-        msg = await channel.send(embed=embed, view=None)
-
-        thread = await msg.create_thread(name=operation)
-        event_id = str(uuid.uuid4())
-        events[event_id] = {
-            'operation': operation,
-            'editor': editor,
-            'preset': preset,
-            'roles': roles,
-            'story': story,
-            'secondary_story': secondary_story,
-            'addmod': addmod,
-            'joined': [],
-            'declined': [],
-            'maybe': [],
-            'embed': embed,
-            'timestamp': timestamp,
-            'start_time': dt,
-            'thread': thread,
-            'message': msg
-        }
-        view = EventView(msg, event_id)
-        await msg.edit(embed=embed, view=view)
-        bot.loop.create_task(event_timer(event_id))
+    thread = await msg.create_thread(name=operation)
+    event_id = str(uuid.uuid4())
+    events[event_id] = {
+        'operation': operation,
+        'editor': editor,
+        'preset': preset,
+        'roles': roles,
+        'story': story,
+        'joined': [],
+        'declined': [],
+        'maybe': [],
+        'embed': embed,
+        'timestamp': timestamp,
+        'start_time': dt,
+        'thread': thread,
+        'message': msg
+    }
+    view = EventView(msg, event_id)
+    await msg.edit(embed=embed, view=view)
+    bot.loop.create_task(event_timer(event_id))
 
 
 #=============================================================================================
