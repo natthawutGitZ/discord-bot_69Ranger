@@ -347,23 +347,25 @@ async def update_summary(message, thread):
         return
     elif confirmation_view.value:
         # ส่งข้อความไปยังช่องที่กำหนด
-        message = await channel.send(embed=embed)
+        message = await channel.send(embed=embed)  # กำหนดตัวแปร message ที่นี่
     
         # สร้างเธรดสำหรับสรุปรายชื่อ
         thread = await message.create_thread(name="📋 รายชื่อผู้เข้าร่วม", auto_archive_duration=1440)
     
-        # เพิ่มปุ่มสำหรับการตอบกลับ
+        # เพิ่มปฏิกิริยา (Reaction) สำหรับการยืนยัน
+        await message.add_reaction("✅")
+        await asyncio.sleep(0.5)
+        await message.add_reaction("❌")
+        await asyncio.sleep(0.5)
+        await message.add_reaction("🤔")
+    
+        # เรียกใช้งานฟังก์ชัน update_summary พร้อมส่งอาร์กิวเมนต์
+        await update_summary(message, thread)
+    
+        # แจ้งเตือนว่าข้อความถูกส่งเรียบร้อยแล้ว
         await interaction.followup.send("✅ ข้อความถูกส่งเรียบร้อยแล้ว!", ephemeral=True)
     else:
         await interaction.followup.send("❌ การส่งข้อความถูกยกเลิก", ephemeral=True)
-
-    # เพิ่มปฏิกิริยา (Reaction) สำหรับการยืนยัน
-    await message.add_reaction("✅")
-    await asyncio.sleep(0.5)  # หน่วงเวลา 0.5 วินาทีก่อนเพิ่มปฏิกิริยาถัดไป
-    await message.add_reaction("❌")
-    await asyncio.sleep(0.5)
-    await message.add_reaction("🤔")
-    
 
 
     # ตั้งเวลานับถอยหลัง
