@@ -190,6 +190,27 @@ def is_valid_url(url: str) -> bool:
     )
     return re.match(regex, url) is not None
 
+async def update_summary(message, thread):
+    try:
+        # ดึงข้อมูลผู้ใช้จากปฏิกิริยา
+        join_reaction = discord.utils.get(message.reactions, emoji="✅")
+        not_join_reaction = discord.utils.get(message.reactions, emoji="❌")
+        maybe_reaction = discord.utils.get(message.reactions, emoji="🤔")
+
+        join_users = [user async for user in join_reaction.users() if not user.bot] if join_reaction else []
+        not_join_users = [user async for user in not_join_reaction.users() if not user.bot] if not_join_reaction else []
+        maybe_users = [user async for user in maybe_reaction.users() if not user.bot] if maybe_reaction else []
+
+        # สร้างข้อความสรุป
+        summary = f"**✅ เข้าร่วม ({len(join_users)}):**\n" + "\n".join([user.mention for user in join_users])
+        summary += f"\n\n**❌ ไม่เข้าร่วม ({len(not_join_users)}):**\n" + "\n".join([user.mention for user in not_join_users])
+        summary += f"\n\n**🤔 อาจจะมา ({len(maybe_users)}):**\n" + "\n".join([user.mention for user in maybe_users])
+
+        # ส่งข้อความสรุปใหม่ (เพิ่มต่อท้าย)
+        await thread.send(summary)
+    except Exception as e:
+        logging.error(f"❌ เกิดข้อผิดพลาดในการอัปเดตรายชื่อ: {e}")
+
 @bot.tree.command(name="event", description="สร้างข้อความกิจกรรมพร้อมเวลานับถอยหลังแบบเรียลไทม์")
 @app_commands.describe(
     channel="เลือกห้องที่ต้องการส่งข้อความ",
@@ -338,29 +359,6 @@ async def event_command(
     
         # เรียกใช้งานฟังก์ชัน update_summary พร้อมส่งอาร์กิวเมนต์
     await update_summary(message, thread)
-    
-    # ฟังก์ชัน update_summary
-    async def update_summary(message, thread):
-        try:
-            # ดึงข้อมูลผู้ใช้จากปฏิกิริยา
-            join_reaction = discord.utils.get(message.reactions, emoji="✅")
-            not_join_reaction = discord.utils.get(message.reactions, emoji="❌")
-            maybe_reaction = discord.utils.get(message.reactions, emoji="🤔")
-    
-            join_users = [user async for user in join_reaction.users() if not user.bot] if join_reaction else []
-            not_join_users = [user async for user in not_join_reaction.users() if not user.bot] if not_join_reaction else []
-            maybe_users = [user async for user in maybe_reaction.users() if not user.bot] if maybe_reaction else []
-    
-            # สร้างข้อความสรุป
-            summary = f"**✅ เข้าร่วม ({len(join_users)}):**\n" + "\n".join([user.mention for user in join_users])
-            summary += f"\n\n**❌ ไม่เข้าร่วม ({len(not_join_users)}):**\n" + "\n".join([user.mention for user in not_join_users])
-            summary += f"\n\n**🤔 อาจจะมา ({len(maybe_users)}):**\n" + "\n".join([user.mention for user in maybe_users])
-    
-            # ส่งข้อความสรุปใหม่ (เพิ่มต่อท้าย)
-            await thread.send(summary)
-        except Exception as e:
-            logging.error(f"❌ เกิดข้อผิดพลาดในการอัปเดตรายชื่อ: {e}")
-
 
     # ตั้งเวลานับถอยหลัง
     while True:
