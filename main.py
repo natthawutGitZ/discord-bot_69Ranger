@@ -135,13 +135,13 @@ async def event_timer(event_id):
         try:
             user_id = int(user_mention.replace("<@!", "").replace("<@", "").replace(">", ""))
             user = await bot.fetch_user(user_id)
-            message_text = f"🔔 อีก 10 นาทีจะถึงเวลา **{event['operation']}** กำลังจะเริ่มแล้ว! \nขอให้ผู้เล่นเตรียมตัวเข้า TS | Game Arma รอได้เลย!!!"
+            message_text = f"🔔 อีก 10 นาทีจะถึงเวลา **{event['operation']}** กำลังจะเริ่มแล้ว! \nขอให้ผู้เล่นเตรียมตัวเข้า TeamSpeak 3  | Arma3 รอได้เลย!!!"
             await user.send(message_text)
         except Exception as e:
             print(f"[ERROR] DM failed for {user_mention}: {e}")
             try:
                 await event['thread'].send(
-                    f"{user_mention} 🔔 อีก 10 นาทีจะถึงเวลา **{event['operation']}** กำลังจะเริ่มแล้ว! \nขอให้ผู้เล่นเตรียมตัวเข้า TS | Game Arma รอได้เลย!!!"
+                    f"{user_mention} 🔔 อีก 10 นาทีจะถึงเวลา **{event['operation']}** กำลังจะเริ่มแล้ว! \nขอให้ผู้เล่นเตรียมตัวเข้า TeamSpeak 3  | Arma3 รอได้เลย!!!"
                 )
             except Exception as thread_error:
                 print(f"[ERROR] Failed to send to thread for {user_mention}: {thread_error}")
@@ -152,7 +152,7 @@ async def event_timer(event_id):
         await asyncio.sleep(wait_until_start)
 
     embed = event['embed']
-    embed.title = f"🟢 {event['operation']} (กำลังดำเนินการ)"
+    embed.title = f"🟢 {event['operation']} (อยู่ในระหว่างกำลังดำเนินการ)"
     await event['message'].edit(embed=embed, view=None)
 
     # ส่ง DM แจ้งว่าเริ่มกิจกรรมแล้ว
@@ -170,6 +170,25 @@ async def event_timer(event_id):
     embed.title = f"⚫ {event['operation']} (กิจกรรมได้จบลงแล้ว)"
     await event['message'].edit(embed=embed)
 
+
+from discord.ui import View, Button
+
+class ConfirmationView(View):
+    def __init__(self):
+        super().__init__(timeout=60)  # ตั้งเวลาหมดอายุ 60 วินาที
+        self.value = None
+
+    @discord.ui.button(label="ยืนยัน", style=discord.ButtonStyle.success)
+    async def confirm(self, interaction: discord.Interaction, button: Button):
+        self.value = True
+        await interaction.response.defer()
+        self.stop()
+
+    @discord.ui.button(label="ยกเลิก", style=discord.ButtonStyle.danger)
+    async def cancel(self, interaction: discord.Interaction, button: Button):
+        self.value = False
+        await interaction.response.defer()
+        self.stop()
 
 @tree.command(name="event", description="สร้างกิจกรรมพร้อมปุ่มตอบรับ")
 @app_commands.describe(
@@ -197,7 +216,7 @@ async def create_event(interaction: discord.Interaction,
     try:
         day, month, year_time = datetime_input.split("-")
         year, time = year_time.split(" ")
-        hour, minute = time.split(":" )
+        hour, minute = time.split(":")
         year = int(year) - 543
         dt = datetime(int(year), int(month), int(day), int(hour), int(minute))
         dt = bangkok_tz.localize(dt)
@@ -208,6 +227,7 @@ async def create_event(interaction: discord.Interaction,
     timestamp = int(dt.timestamp())
     counts_text = f"✅ 0 คน | ❌ 0 คน | ❓ 0 คน"
 
+    # สร้าง Embed ตัวอย่าง
     embed = discord.Embed(
         title=f"📌 {operation}",
         description=f"<t:{timestamp}:F> | <t:{timestamp}:R>\n**Editor:** {editor}\n**Preset:** {preset}\n**Roles:** {roles}\n**Tags:** {tags}\n\n📖 **Story:**\n{story}",
@@ -222,29 +242,44 @@ async def create_event(interaction: discord.Interaction,
         text=f"69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
         icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
     )
-    await interaction.response.send_message("✅ ยืนยันการสร้างกิจกรรมแล้ว!", ephemeral=True)
-    msg = await channel.send(embed=embed, view=None)
 
-    thread = await msg.create_thread(name=operation)
-    event_id = str(uuid.uuid4())
-    events[event_id] = {
-        'operation': operation,
-        'editor': editor,
-        'preset': preset,
-        'roles': roles,
-        'story': story,
-        'joined': [],
-        'declined': [],
-        'maybe': [],
-        'embed': embed,
-        'timestamp': timestamp,
-        'start_time': dt,
-        'thread': thread,
-        'message': msg
-    }
-    view = EventView(msg, event_id)
-    await msg.edit(embed=embed, view=view)
-    bot.loop.create_task(event_timer(event_id))
+    # แสดง Embed ตัวอย่างพร้อมปุ่มยืนยัน
+    view = ConfirmationView()
+    await interaction.response.send_message("⚠️ คุณต้องการส่งข้อความนี้หรือไม่?", embed=embed, view=view, ephemeral=True)
+
+    # รอการตอบสนองจากผู้ใช้
+    await view.wait()
+
+    if view.value is None:
+        await interaction.followup.send("⏰ หมดเวลาการยืนยัน", ephemeral=True)
+        return
+    elif view.value:
+        # ส่งข้อความไปยังช่องที่กำหนด
+        msg = await channel.send(embed=embed, view=None)
+
+        thread = await msg.create_thread(name=operation)
+        event_id = str(uuid.uuid4())
+        events[event_id] = {
+            'operation': operation,
+            'editor': editor,
+            'preset': preset,
+            'roles': roles,
+            'story': story,
+            'joined': [],
+            'declined': [],
+            'maybe': [],
+            'embed': embed,
+            'timestamp': timestamp,
+            'start_time': dt,
+            'thread': thread,
+            'message': msg
+        }
+        view = EventView(msg, event_id)
+        await msg.edit(embed=embed, view=view)
+        bot.loop.create_task(event_timer(event_id))
+        await interaction.followup.send("✅ ข้อความถูกส่งเรียบร้อยแล้ว!", ephemeral=True)
+    else:
+        await interaction.followup.send("❌ การส่งข้อความถูกยกเลิก", ephemeral=True)
 
 
 #=============================================================================================
@@ -317,7 +352,42 @@ async def status_command(interaction: discord.Interaction):
 #=============================================================================================
 # 📩 Admin Commands
 #=============================================================================================
-#⚠️ /DM ส่ง ข้อความ DM
+#⚠️ /say ส่งข้อความไปยังห้องที่กำหนด
+@bot.tree.command(name="say", description="ให้บอทส่งข้อความไปยังห้องที่กำหนด (เฉพาะแอดมิน)")
+@app_commands.describe(channel="เลือกห้องที่ต้องการส่งข้อความ", message="ข้อความที่จะส่ง")
+async def say_command(interaction: discord.Interaction, channel: discord.TextChannel, message: str):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("❌ คุณไม่มีสิทธิ์ใช้คำสั่งนี้ (ต้องเป็นแอดมิน)", ephemeral=True)
+        return
+
+    # แสดงข้อความตัวอย่างพร้อมปุ่มยืนยัน
+    embed = discord.Embed(
+        title="📢 ยืนยันการส่งข้อความ",
+        description=f"**ข้อความที่จะส่ง:**\n{message}\n\n**ห้อง:** {channel.mention}",
+        color=discord.Color.orange()
+    )
+    view = ConfirmationView()
+    await interaction.response.send_message("⚠️ คุณต้องการส่งข้อความนี้หรือไม่?", embed=embed, view=view, ephemeral=True)
+
+    # รอการตอบสนองจากผู้ใช้
+    await view.wait()
+
+    if view.value is None:
+        await interaction.followup.send("⏰ หมดเวลาการยืนยัน", ephemeral=True)
+        return
+    elif view.value:
+        try:
+            await channel.send(message)
+            await interaction.followup.send(f"✅ ส่งข้อความไปยังห้อง {channel.mention} สำเร็จ!", ephemeral=True)
+        except discord.Forbidden:
+            await interaction.followup.send(f"❌ ไม่สามารถส่งข้อความไปยังห้อง {channel.mention} ได้ (บอทอาจไม่มีสิทธิ์)", ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"❌ เกิดข้อผิดพลาด: {e}", ephemeral=True)
+    else:
+        await interaction.followup.send("❌ การส่งข้อความถูกยกเลิก", ephemeral=True)
+
+#=============================================================================================
+#⚠️ /dm ส่งข้อความ DM ให้สมาชิกเฉพาะ Role
 @bot.tree.command(name="dm", description="ส่ง DM ให้สมาชิกเฉพาะ Role (เฉพาะแอดมิน)")
 @app_commands.describe(role="เลือก Role ที่ต้องการส่งถึง", message="ข้อความที่จะส่ง")
 async def dm(interaction: discord.Interaction, role: discord.Role, message: str):
@@ -330,34 +400,36 @@ async def dm(interaction: discord.Interaction, role: discord.Role, message: str)
         await interaction.response.send_message("❌ ไม่มีสมาชิกใน Role นี้ที่สามารถส่ง DM ได้", ephemeral=True)
         return
 
-    success, failed = 0, 0
-    for member in members:
-        try:
-            await member.send(message)
-            success += 1
-        except discord.Forbidden:
-            failed += 1
-            logging.warning(f"❌ ไม่สามารถส่งข้อความให้ {member.name} ได้ (สมาชิกอาจปิดการรับ DM)")
-
-    await interaction.response.send_message(
-        f"✅ ส่งสำเร็จ: {success} คน\n❌ ส่งไม่สำเร็จ: {failed} คน", ephemeral=True
+    # แสดงข้อความตัวอย่างพร้อมปุ่มยืนยัน
+    embed = discord.Embed(
+        title="📢 ยืนยันการส่งข้อความ DM",
+        description=f"**ข้อความที่จะส่ง:**\n{message}\n\n**Role:** {role.mention}\n**จำนวนสมาชิก:** {len(members)} คน",
+        color=discord.Color.orange()
     )
-#=============================================================================================
-#⚠️ /say ส่งข้อความไปยังห้องที่กำหนด
-@bot.tree.command(name="say", description="ให้บอทส่งข้อความไปยังห้องที่กำหนด (เฉพาะแอดมิน)")
-@app_commands.describe(channel="เลือกห้องที่ต้องการส่งข้อความ", message="ข้อความที่จะส่ง")
-async def say_command(interaction: discord.Interaction, channel: discord.TextChannel, message: str):
-    if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("❌ คุณไม่มีสิทธิ์ใช้คำสั่งนี้ (ต้องเป็นแอดมิน)", ephemeral=True)
-        return
+    view = ConfirmationView()
+    await interaction.response.send_message("⚠️ คุณต้องการส่งข้อความนี้หรือไม่?", embed=embed, view=view, ephemeral=True)
 
-    try:
-        await channel.send(message)
-        await interaction.response.send_message(f"✅ ส่งข้อความไปยังห้อง {channel.mention} สำเร็จ!", ephemeral=True)
-    except discord.Forbidden:
-        await interaction.response.send_message(f"❌ ไม่สามารถส่งข้อความไปยังห้อง {channel.mention} ได้ (บอทอาจไม่มีสิทธิ์)", ephemeral=True)
-    except Exception as e:
-        await interaction.response.send_message(f"❌ เกิดข้อผิดพลาด: {e}", ephemeral=True)
+    # รอการตอบสนองจากผู้ใช้
+    await view.wait()
+
+    if view.value is None:
+        await interaction.followup.send("⏰ หมดเวลาการยืนยัน", ephemeral=True)
+        return
+    elif view.value:
+        success, failed = 0, 0
+        for member in members:
+            try:
+                await member.send(message)
+                success += 1
+            except discord.Forbidden:
+                failed += 1
+                logging.warning(f"❌ ไม่สามารถส่งข้อความให้ {member.name} ได้ (สมาชิกอาจปิดการรับ DM)")
+
+        await interaction.followup.send(
+            f"✅ ส่งสำเร็จ: {success} คน\n❌ ส่งไม่สำเร็จ: {failed} คน", ephemeral=True
+        )
+    else:
+        await interaction.followup.send("❌ การส่งข้อความถูกยกเลิก", ephemeral=True)
 #=============================================================================================
 #⚠️ /join ให้บอทเข้าร่วมห้องเสียง
 @bot.tree.command(name="join", description="ให้บอทเข้าร่วมห้องเสียง (Voice Channel)")
