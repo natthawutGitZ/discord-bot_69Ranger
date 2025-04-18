@@ -244,8 +244,6 @@ async def event_command(
     # แปลงวันที่และเวลาเป็นรูปแบบภาษาไทย
     thai_datetime = f"{day_thai}ที่ {event_datetime.day} {month_thai} {event_datetime.year + 543} เวลา {event_datetime.strftime('%H:%M')}"
     
-    # แจ้ง Discord ว่าบอทกำลังดำเนินการ
-    await interaction.response.defer()
     
     # สร้าง Embed สำหรับกิจกรรม
     embed = discord.Embed(
@@ -332,11 +330,11 @@ async def event_command(
         await interaction.followup.send("❌ การส่งข้อความถูกยกเลิก", ephemeral=True)
 
     # เพิ่มปฏิกิริยา (Reaction) สำหรับการยืนยัน
-    await confirmation_message.add_reaction("✅")
+    await message.add_reaction("✅")
     await asyncio.sleep(0.5)  # หน่วงเวลา 0.5 วินาทีก่อนเพิ่มปฏิกิริยาถัดไป
-    await confirmation_message.add_reaction("❌")
+    await message.add_reaction("❌")
     await asyncio.sleep(0.5)
-    await confirmation_message.add_reaction("🤔")
+    await message.add_reaction("🤔")
     
     # เรียกใช้งานฟังก์ชัน update_summary พร้อมส่งอาร์กิวเมนต์
     await update_summary(message, thread)
