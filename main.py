@@ -179,15 +179,16 @@ async def create_event(interaction: discord.Interaction,
     month_th = thai_months[dt.month - 1]
     datetime_th = f"{weekday}ที่ {dt.day} {month_th} {dt.year+543} เวลา {dt.hour:02}:{dt.minute:02} น."
 
-    counts_text = "✅เข้าร่วม 0 คน | ❌ไม่เข้าร่วม 0 คน | ❓อาจจะมา 0 คน"
 
     embed = discord.Embed(
         title=f"📌 {operation}",
         description=f"**วันเวลา:** {datetime_th}\n<t:{timestamp}:F> | <t:{timestamp}:R>\n**Editor:** {editor}\n**Preset:** {preset}\n**Roles:** {roles}\n**Tags:** {tags}\n\n📖 **Story:**\n{story}",
-        color=discord.Color.green()
+        color=discord.Color.red()
     )
     if image_url:
         embed.set_image(url=image_url)
+
+    counts_text = "✅เข้าร่วม 0 คน | ❌ไม่เข้าร่วม 0 คน | ❓อาจจะมา 0 คน"
 
     embed.set_footer(
         text=f"69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
