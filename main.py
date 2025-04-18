@@ -141,7 +141,6 @@ async def event_timer(event_id):
             print(f"[ERROR] Failed to DM user {user_mention}: {e}")
             await event['thread'].send(f"{user_mention} 🔔 อีก 10 นาทีจะถึงเวลากิจกรรม **{event['operation']}** กำลังจะเริ่มแล้ว!")
 
-    # รอจนถึงเวลาจริงของกิจกรรมเพื่ออัปเดตเป็น "กำลังดำเนินการ"
     now = datetime.now(bangkok_tz)
     wait_until_start = (event['start_time'] - now).total_seconds()
     if wait_until_start > 0:
@@ -151,7 +150,6 @@ async def event_timer(event_id):
     embed.title = f"🟡 {event['operation']} (กำลังดำเนินการ)"
     await event['message'].edit(embed=embed, view=None)
 
-    # 4 ชั่วโมงถัดไป
     await asyncio.sleep(4 * 3600)
     embed.title = f"⚫ {event['operation']} (กิจกรรมได้จบลงแล้ว)"
     await event['message'].edit(embed=embed)
@@ -230,7 +228,6 @@ async def create_event(interaction: discord.Interaction,
     view = EventView(msg, event_id)
     await msg.edit(embed=embed, view=view)
     bot.loop.create_task(event_timer(event_id))
-
 
 
 #=============================================================================================
