@@ -138,8 +138,13 @@ async def event_timer(event_id):
             message_text = f"🔔 อีก 10 นาทีจะถึงเวลากิจกรรม\n**{event['operation']}** กำลังจะเริ่มแล้ว!"
             await user.send(message_text)
         except Exception as e:
-            print(f"[ERROR] Failed to DM user {user_mention}: {e}")
-            await event['thread'].send(f"{user_mention} 🔔 อีก 10 นาทีจะถึงเวลากิจกรรม **{event['operation']}** กำลังจะเริ่มแล้ว!")
+            print(f"[ERROR] DM failed for {user_mention}: {e}")
+            try:
+                await event['thread'].send(
+                    f"{user_mention} 🔔 อีก 10 นาทีจะถึงเวลากิจกรรม **{event['operation']}** กำลังจะเริ่มแล้ว!"
+                )
+            except Exception as thread_error:
+                print(f"[ERROR] Failed to send to thread for {user_mention}: {thread_error}")
 
     now = datetime.now(bangkok_tz)
     wait_until_start = (event['start_time'] - now).total_seconds()
