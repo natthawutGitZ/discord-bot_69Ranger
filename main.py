@@ -190,6 +190,9 @@ def is_valid_url(url: str) -> bool:
     )
     return re.match(regex, url) is not None
 
+        
+    await update_summary(message, thread) # เรียกใช้งานฟังก์ชัน update_summary พร้อมส่งอาร์กิวเมนต์
+
 async def update_summary(message, thread):
     try:
         # ดึงข้อมูลผู้ใช้จากปฏิกิริยา
@@ -357,8 +360,7 @@ async def event_command(
     await asyncio.sleep(0.5)
     await message.add_reaction("🤔")
     
-        # เรียกใช้งานฟังก์ชัน update_summary พร้อมส่งอาร์กิวเมนต์
-    await update_summary(message, thread)
+
 
     # ตั้งเวลานับถอยหลัง
     while True:
