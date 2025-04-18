@@ -48,6 +48,7 @@ thai_days = ["วันอาทิตย์", "วันจันทร์", "�
 thai_months = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
                "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
 
+bangkok_tz = pytz.timezone("Asia/Bangkok")
 events = {}
 
 class EventView(View):
@@ -120,17 +121,20 @@ async def update_summary_embed(event):
 
 async def event_timer(event_id):
     event = events[event_id]
-    wait_time = (event['start_time'] - datetime.now()).total_seconds() - 600
+    now = datetime.now(bangkok_tz)
+    wait_time = (event['start_time'] - now).total_seconds() - 600
+    print(f"[TIMER] Waiting {wait_time} seconds until 10-min warning for event {event['operation']}")
+
     if wait_time > 0:
         await asyncio.sleep(wait_time)
 
     for user_mention in event['joined']:
-        user_id = int(user_mention.strip("<@!>"))
-        user = await bot.fetch_user(user_id)
         try:
-            await user.send(f"🔔 อีก 10 นาทีจะถึงเวลากิจกรรม\n**{event['operation']}** กำลังจะเริ่มแล้ว!")
-        except:
-            pass
+            user_id = int(user_mention.replace("<@!", "").replace("<@", "").replace(">", ""))
+            user = await bot.fetch_user(user_id)
+            await user.send(f"🔔 อีก 10 นาทีจะถึงเวลากิจกรรม\n**{event['operation']}** กำลังจะเริ่มแล้ว! \nโปรดเข้า TS3 : 69rangergtm.ts3thai.net")
+        except Exception as e:
+            print(f"[ERROR] Failed to DM user {user_mention}: {e}")
 
     await asyncio.sleep(600)
     embed = event['embed']
@@ -167,10 +171,10 @@ async def create_event(interaction: discord.Interaction,
     try:
         day, month, year_time = datetime_input.split("-")
         year, time = year_time.split(" ")
-        hour, minute = time.split(":")
+        hour, minute = time.split(":" )
         year = int(year) - 543
-        tz = pytz.timezone("Asia/Bangkok")
-        dt = tz.localize(datetime(int(year), int(month), int(day), int(hour), int(minute)))
+        dt = datetime(int(year), int(month), int(day), int(hour), int(minute))
+        dt = bangkok_tz.localize(dt)
     except:
         await interaction.response.send_message("❌ รูปแบบวันที่ไม่ถูกต้อง ใช้: 01-01-2568 20:30", ephemeral=True)
         return
@@ -178,19 +182,18 @@ async def create_event(interaction: discord.Interaction,
     timestamp = int(dt.timestamp())
     weekday = thai_days[dt.weekday()]
     month_th = thai_months[dt.month - 1]
-    datetime_th = f"{weekday}ที่ {dt.day} {month_th} {dt.year + 543} เวลา {dt.hour:02}:{dt.minute:02} น."
+    datetime_th = f"{weekday}ที่ {dt.day} {month_th} {dt.year+543} เวลา {dt.hour:02}:{dt.minute:02} น."
 
     counts_text = "✅เข้าร่วม 0 คน | ❌ไม่เข้าร่วม 0 คน | ❓อาจจะมา 0 คน"
 
     embed = discord.Embed(
         title=f"📌 {operation}",
-        description=f"**วันเวลา:** {datetime_th}\n<t:{timestamp}:F> | <t:{timestamp}:R>\n**Editor:** {editor}\n**Preset:** {preset}\n**Roles:** {roles}\n**Tags:** {tags}\n\n📖 **Story:**\n{story}",
+        description=f"<t:{timestamp}:F> | <t:{timestamp}:R>\n**Editor:** {editor}\n**Preset:** {preset}\n**Roles:** {roles}\n**Tags:** {tags}\n\n📖 **Story:**\n{story}",
         color=discord.Color.green()
     )
     if image_url:
         embed.set_image(url=image_url)
 
-    embed.add_field(name="จำนวนผู้ตอบรับ", value=counts_text, inline=False)
     embed.set_footer(
         text=f"69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
         icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
