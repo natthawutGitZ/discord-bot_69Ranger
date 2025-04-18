@@ -155,9 +155,21 @@ async def event_timer(event_id):
     embed.title = f"🟡 {event['operation']} (กำลังดำเนินการ)"
     await event['message'].edit(embed=embed, view=None)
 
+    # ส่ง DM แจ้งว่าเริ่มกิจกรรมแล้ว
+    for user_mention in event['joined']:
+        try:
+            user_id = int(user_mention.replace("<@!", "").replace("<@", "").replace(">", ""))
+            user = await bot.fetch_user(user_id)
+            await user.send(f"🟡 กิจกรรม **{event['operation']}** ได้เริ่มต้นขึ้นแล้ว!")
+        except Exception as e:
+            print(f"[ERROR] Failed to DM user {user_mention}: {e}")
+            await event['thread'].send(f"{user_mention} 🟡 กิจกรรม **{event['operation']}** ได้เริ่มต้นขึ้นแล้ว!")
+
+    # รอ 4 ชั่วโมง แล้วอัปเดตสถานะเป็นจบ
     await asyncio.sleep(4 * 3600)
     embed.title = f"⚫ {event['operation']} (กิจกรรมได้จบลงแล้ว)"
     await event['message'].edit(embed=embed)
+
 
 @tree.command(name="event", description="สร้างกิจกรรมพร้อมปุ่มตอบรับ")
 @app_commands.describe(
