@@ -13,12 +13,17 @@
 import discord
 import os
 import logging
-from datetime import datetime
+import pytz
+import asyncio
+import uuid
+
+from datetime import datetime, timedelta
 from typing import Optional
 from discord.ext import commands
 from discord import app_commands
+from discord.ui import View, Button, Modal, TextInput
+from itertools import zip_longest
 from keep_alive import keep_alive
-import pytz
 
 # Logging Configuration
 logging.basicConfig(level=logging.DEBUG)
@@ -27,7 +32,10 @@ logging.basicConfig(level=logging.DEBUG)
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
-bot = commands.Bot(command_prefix='!', intents=intents)
+
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix='/', intents=intents)
+tree = bot.tree
 
 # ตั้งค่า Timezone
 THAI_TZ = pytz.timezone("Asia/Bangkok")
@@ -35,6 +43,176 @@ THAI_TZ = pytz.timezone("Asia/Bangkok")
 #=============================================================================================
 # ⚙️ General Commands
 #=============================================================================================
+# ⚠️ /Event สร้างกิจกรรมพร้อมปุ่มตอบรับ
+thai_days = ["วันอาทิตย์", "วันจันทร์", "วันอังคาร", "วันพุธ", "วันพฤหัสบดี", "วันศุกร์", "วันเสาร์"]
+thai_months = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+               "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
+
+events = {}
+
+class EventView(View):
+    def __init__(self, message, event_id):
+        super().__init__(timeout=None)
+        self.message = message
+        self.event_id = event_id
+
+    async def update_counts(self):
+        event = events[self.event_id]
+        counts = f"✅ {len(event['joined'])} คน | ❌ {len(event['declined'])} คน | ❓ {len(event['maybe'])} คน"
+        timestamp_full = f"<t:{int(event['timestamp'])}:F>"
+        timestamp_relative = f"<t:{int(event['timestamp'])}:R>"
+
+        embed = event['embed']
+        embed.set_footer(text=counts + f"\n{timestamp_full} | {timestamp_relative}")
+        await self.message.edit(embed=embed, view=self)
+        await update_summary_embed(event)
+
+    async def handle_response(self, interaction, status):
+        user = interaction.user.mention
+        event = events[self.event_id]
+
+        for lst in [event['joined'], event['declined'], event['maybe']]:
+            if user in lst:
+                lst.remove(user)
+
+        if status == 'joined':
+            event['joined'].append(user)
+        elif status == 'declined':
+            event['declined'].append(user)
+        elif status == 'maybe':
+            event['maybe'].append(user)
+
+        await interaction.response.defer()
+        await self.update_counts()
+
+    @discord.ui.button(label="เข้าร่วม", style=discord.ButtonStyle.success, emoji="✅")
+    async def join(self, interaction: discord.Interaction, button: Button):
+        await self.handle_response(interaction, 'joined')
+
+    @discord.ui.button(label="ไม่เข้าร่วม", style=discord.ButtonStyle.danger, emoji="❌")
+    async def decline(self, interaction: discord.Interaction, button: Button):
+        await self.handle_response(interaction, 'declined')
+
+    @discord.ui.button(label="อาจจะมา", style=discord.ButtonStyle.secondary, emoji="❓")
+    async def maybe(self, interaction: discord.Interaction, button: Button):
+        await self.handle_response(interaction, 'maybe')
+
+async def update_summary_embed(event):
+    joined, declined, maybe = event['joined'], event['declined'], event['maybe']
+    rows = []
+    for j, d, m in zip_longest(joined, declined, maybe, fillvalue=""):
+        rows.append(f"{j:<10} | {d:<10} | {m}")
+    table = "**เข้าร่วม | ไม่เข้าร่วม | อาจจะเข้าร่วม**\n" + "\n".join(rows)
+
+    embed = discord.Embed(title="📋 สรุปการตอบรับ", description=table, color=discord.Color.blue())
+    if 'thread_message' in event:
+        try:
+            await event['thread_message'].edit(embed=embed)
+        except:
+            pass
+    else:
+        thread_msg = await event['thread'].send(embed=embed)
+        event['thread_message'] = thread_msg
+
+async def event_timer(event_id):
+    event = events[event_id]
+    wait_time = (event['start_time'] - datetime.now()).total_seconds() - 600
+    if wait_time > 0:
+        await asyncio.sleep(wait_time)
+
+    for user_mention in event['joined']:
+        user_id = int(user_mention.strip("<@!>"))
+        user = await bot.fetch_user(user_id)
+        try:
+            await user.send(f"🔔 อีก 10 นาทีจะถึงเวลากิจกรรม\n**{event['operation']}** กำลังจะเริ่มแล้ว!")
+        except:
+            pass
+
+    await asyncio.sleep(600)
+    embed = event['embed']
+    embed.title = f"🟡 {event['operation']} (กำลังดำเนินการ)"
+    await event['message'].edit(embed=embed, view=None)
+
+    await asyncio.sleep(4 * 3600)
+    embed.title = f"⚫ {event['operation']} (กิจกรรมได้จบลงแล้ว)"
+    await event['message'].edit(embed=embed)
+
+@tree.command(name="event", description="สร้างกิจกรรมพร้อมปุ่มตอบรับ")
+@app_commands.describe(
+    channel="เลือกห้องที่จะโพสต์กิจกรรม",
+    datetime_input="วันและเวลาของกิจกรรม (เช่น 01-01-2568 20:30)",
+    operation="ชื่อ Operation (เช่น The Darknight Ep.4)",
+    editor="ชื่อผู้แก้ไข (เช่น @Silver BlackWell)",
+    preset="Preset / Mod ที่ใช้",
+    tags="แท็กผู้เข้าร่วม (เช่น @everyone)",
+    story="เนื้อเรื่องของกิจกรรม",
+    roles="บทบาทที่ใช้",
+    image_url="URL ของรูปภาพกิจกรรม (ถ้ามี)"
+)
+async def create_event(interaction: discord.Interaction, 
+    channel: discord.TextChannel, 
+    datetime_input: str,
+    operation: str, 
+    editor: str, 
+    preset: str, 
+    tags: str, 
+    story: str, 
+    roles: str, 
+    image_url: str = None):
+
+    try:
+        day, month, year_time = datetime_input.split("-")
+        year, time = year_time.split(" ")
+        hour, minute = time.split(":")
+        year = int(year) - 543
+        dt = datetime(int(year), int(month), int(day), int(hour), int(minute))
+    except:
+        await interaction.response.send_message("❌ รูปแบบวันที่ไม่ถูกต้อง ใช้: 01-01-2568 20:30", ephemeral=True)
+        return
+
+    timestamp = int(dt.timestamp())
+    weekday = thai_days[dt.weekday()]
+    month_th = thai_months[dt.month - 1]
+    datetime_th = f"{weekday}ที่ {dt.day} {month_th} {dt.year+543} เวลา {dt.hour:02}:{dt.minute:02} น."
+
+    embed = discord.Embed(
+        title=f"📌 {operation}",
+        description=f"**วันเวลา:** {datetime_th} (<t:{timestamp}:R>)\n**Editor:** {editor}\n**Preset:** {preset}\n**Roles:** {roles}\n\n📖 **Story:**\n{story}",
+        color=discord.Color.green()
+    )
+    if image_url:
+        embed.set_image(url=image_url)
+
+    embed.set_footer(text=f"✅ 0 คน | ❌ 0 คน | ❓ 0 คน\n<t:{timestamp}:F> | <t:{timestamp}:R>")
+
+    await interaction.response.send_message("✅ ยืนยันการสร้างกิจกรรมแล้ว!", ephemeral=True)
+    msg = await channel.send(tags, embed=embed, view=None)
+
+    thread = await msg.create_thread(name=operation)
+    event_id = str(uuid.uuid4())
+    events[event_id] = {
+        'operation': operation,
+        'editor': editor,
+        'preset': preset,
+        'roles': roles,
+        'story': story,
+        'joined': [],
+        'declined': [],
+        'maybe': [],
+        'embed': embed,
+        'timestamp': timestamp,
+        'start_time': dt,
+        'thread': thread,
+        'message': msg
+    }
+    view = EventView(msg, event_id)
+    await msg.edit(embed=embed, view=view)
+    bot.loop.create_task(event_timer(event_id))
+#=============================================================================================
+
+
+
+
 #⚠️ /Help แสดงคำสั่งทั้งหมดของบอท
 @bot.tree.command(name="help", description="แสดงคำสั่งทั้งหมดของบอท")
 async def help_command(interaction: discord.Interaction):
