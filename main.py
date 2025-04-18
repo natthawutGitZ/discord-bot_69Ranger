@@ -61,7 +61,7 @@ class EventView(View):
         counts = f"✅ {len(event['joined'])} คน | ❌ {len(event['declined'])} คน | ❓ {len(event['maybe'])} คน"
 
         embed = event['embed']
-        embed.set_footer(text=counts)
+        embed.set_field_at(0, name="จำนวนผู้ตอบรับ", value=counts, inline=False)
         await self.message.edit(embed=embed, view=self)
         await update_summary_embed(event)
 
@@ -147,7 +147,7 @@ async def event_timer(event_id):
     datetime_input="วันและเวลาของกิจกรรม (เช่น 01-01-2568 20:30)",
     operation="ชื่อ Operation (เช่น The Darknight Ep.4)",
     editor="ชื่อผู้แก้ไข (เช่น @Silver BlackWell)",
-    preset="Preset / Mod ที่ใช้",
+    preset="Mod ที่ใช้งาน (เช่น69Ranger RE Preset Edit V5)",
     tags="แท็กผู้เข้าร่วม (เช่น @everyone)",
     story="เนื้อเรื่องของกิจกรรม",
     roles="บทบาทที่ใช้",
@@ -179,20 +179,21 @@ async def create_event(interaction: discord.Interaction,
     month_th = thai_months[dt.month - 1]
     datetime_th = f"{weekday}ที่ {dt.day} {month_th} {dt.year+543} เวลา {dt.hour:02}:{dt.minute:02} น."
 
+    counts_text = "✅เข้าร่วม 0 คน | ❌ไม่เข้าร่วม 0 คน | ❓อาจจะมา 0 คน"
+
     embed = discord.Embed(
         title=f"📌 {operation}",
-        description=f"**วันเวลา:** {datetime_th}\n**Editor:** {editor}\n**Preset:** {preset}\n**Roles:** {roles}\n**Tags:** {tags}\n\n📖 **Story:**\n{story}",
+        description=f"**วันเวลา:** {datetime_th}\n<t:{timestamp}:F> | <t:{timestamp}:R>\n**Editor:** {editor}\n**Preset:** {preset}\n**Roles:** {roles}\n**Tags:** {tags}\n\n📖 **Story:**\n{story}",
         color=discord.Color.green()
     )
     if image_url:
         embed.set_image(url=image_url)
 
     embed.set_footer(
-        text=f"✅เข้าร่วม 0 คน | ❌ไม่เข้าร่วม 0 คน | ❓อาจจะมา 0 คน\n69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
+        text=f"69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
         icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
                     
          )
-
     await interaction.response.send_message("✅ ยืนยันการสร้างกิจกรรมแล้ว!", ephemeral=True)
     msg = await channel.send(embed=embed, view=None)
 
