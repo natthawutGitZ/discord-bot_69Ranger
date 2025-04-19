@@ -245,18 +245,22 @@ async def create_event(interaction: discord.Interaction,
 
     # แสดง Embed ตัวอย่างพร้อมปุ่มยืนยัน
     view = ConfirmationView()
-    await interaction.response.send_message("⚠️ คุณต้องการส่งข้อความนี้หรือไม่?", embed=embed, view=view, ephemeral=True)
-
+    try:
+        await interaction.response.send_message("⚠️ คุณต้องการส่งข้อความนี้หรือไม่?", embed=embed, view=view, ephemeral=True)
+    except discord.errors.NotFound:
+        await interaction.followup.send("❌ การโต้ตอบหมดอายุแล้ว กรุณาลองใหม่อีกครั้ง", ephemeral=True)
+        return
+    
     # รอการตอบสนองจากผู้ใช้
     await view.wait()
-
+    
     if view.value is None:
         await interaction.followup.send("⏰ หมดเวลาการยืนยัน", ephemeral=True)
         return
     elif view.value:
         # ส่งข้อความไปยังช่องที่กำหนด
         msg = await channel.send(embed=embed, view=None)
-
+    
         thread = await msg.create_thread(name=operation)
         event_id = str(uuid.uuid4())
         events[event_id] = {
@@ -281,6 +285,25 @@ async def create_event(interaction: discord.Interaction,
     else:
         await interaction.followup.send("❌ การส่งข้อความถูกยกเลิก", ephemeral=True)
 
+     # DM ไปยัง Role @69Rg Member
+    role = discord.utils.get(interaction.guild.roles, name="[DEV] ModManager")
+    if role:
+        msg_link = f"https://discord.com/channels/{interaction.guild.id}/{channel.id}/{msg.id}"
+        for member in role.members:
+            if member.bot:
+                continue
+            try:
+                await member.send(
+                    f"📣 มีกิจกรรมใหม่!\n"
+                    f"📌 **{operation}**\n"
+                    f"📅 วันที่: <t:{timestamp}:D>\n"
+                    f"🕒 เวลา: <t:{timestamp}:t>\n"
+                    f"หากสนใจเข้าร่วมกิจกรรม สามารถตอบรับได้ที่โพสต์นี้\n"
+                    f"🔗 ดูรายละเอียดกิจกรรม: {msg_link}"
+                    
+                )
+            except:
+                pass
 #=============================================================================================
 #⚠️ /Help แสดงคำสั่งทั้งหมดของบอท
 @bot.tree.command(name="help", description="แสดงคำสั่งทั้งหมดของบอท")
@@ -290,24 +313,49 @@ async def help_command(interaction: discord.Interaction):
         description="คำสั่งทั้งหมดที่สามารถใช้งานได้ในเซิร์ฟเวอร์นี้",
         color=discord.Color.blue()
     )
+    # หมวดหมู่คำสั่งทั่วไป
     embed.add_field(
         name="⚙️ คำสั่งทั่วไป",
-        value="`/ping` - ทดสอบว่าบอทออนไลน์หรือไม่\n"
-              "`/status` - แสดงสถานะของบอท\n"
-              "`/help` - แสดงคำสั่งทั้งหมดของบอท",
+        value=(
+            "`/ping` - ทดสอบว่าบอทออนไลน์หรือไม่\n"
+            "`/status` - แสดงสถานะของบอท\n"
+            "`/help` - แสดงคำสั่งทั้งหมดของบอท"
+        ),
         inline=False
     )
+    # หมวดหมู่คำสั่งสำหรับแอดมิน
     embed.add_field(
         name="📩 คำสั่งสำหรับแอดมิน",
         value=(
+            "`/announce` - ส่งข้อความประกาศไปยังห้องที่กำหนด\n"
             "`/dm` - ส่งข้อความ DM ให้สมาชิกใน Role\n"
-            "`/say` - ส่งข้อความไปยังห้องที่กำหนด\n"
-            "`/event` - สร้างeventห้องที่กำหนด"
+            "`/event` - สร้างกิจกรรมพร้อมปุ่มตอบรับ\n"
+            "`/reset` - รีเซ็ตคำสั่งบอททั้งหมด"
+        ),
+        inline=False
+    )
+    # หมวดหมู่คำสั่งจัดการห้องเสียง
+    embed.add_field(
+        name="🎙️ คำสั่งจัดการห้องเสียง",
+        value=(
+            "`/join` - ให้บอทเข้าร่วมห้องเสียง\n"
+            "`/leave` - ให้บอทออกจากห้องเสียง"
+        ),
+        inline=False
+    )
+    # หมวดหมู่คำสั่งที่เกี่ยวข้องกับ DM
+    embed.add_field(
+        name="📬 คำสั่งที่เกี่ยวข้องกับ DM",
+        value=(
+            "`/dm` - ส่งข้อความ DM ให้สมาชิกใน Role\n"
+            "`/event` - ส่ง DM แจ้งเตือนกิจกรรมให้สมาชิก\n"
+            "ระบบต้อนรับสมาชิกใหม่ - ส่งข้อความต้อนรับผ่าน DM\n"
+            "ระบบแจ้งลาก่อน - ส่งข้อความลาก่อนให้สมาชิกที่ออกจากเซิร์ฟเวอร์"
         ),
         inline=False
     )
     embed.set_footer(
-        text="69Ranger Gentleman Community Bot | พัฒนาโดย | Silver BlackWell",
+        text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
         icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
     )
     embed.set_thumbnail(
@@ -319,7 +367,21 @@ async def help_command(interaction: discord.Interaction):
 @bot.tree.command(name="ping", description="ทดสอบสถานะของบอท")
 async def slash_ping(interaction: discord.Interaction):
     await interaction.response.send_message("บอทยังทำงานอยู่ 🟢")
+#=============================================================================================
+#⚠️ /reset สำหรับการรีเซ็ตคำสั่งบอททั้งหมด (เฉพาะแอดมิน)
+@bot.tree.command(name="reset", description="รีเซ็ตคำสั่งบอททั้งหมด (เฉพาะแอดมิน)")
+async def reset_command(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("❌ คุณไม่มีสิทธิ์ใช้คำสั่งนี้ (ต้องเป็นแอดมิน)", ephemeral=True)
+        return
 
+    try:
+        synced = await bot.tree.sync()
+        await interaction.response.send_message(f"✅ รีเซ็ตคำสั่งทั้งหมดสำเร็จ ({len(synced)} คำสั่งถูกซิงค์ใหม่)", ephemeral=True)
+        logging.info(f"✅ คำสั่งทั้งหมดถูกรีเซ็ตและซิงค์ใหม่ ({len(synced)} คำสั่ง)")
+    except Exception as e:
+        await interaction.response.send_message(f"❌ เกิดข้อผิดพลาดในการรีเซ็ตคำสั่ง: {e}", ephemeral=True)
+        logging.error(f"❌ เกิดข้อผิดพลาดในการรีเซ็ตคำสั่ง: {e}")
 #=============================================================================================
 # ⚠️ /status เพื่อแสดงสถานะของบอท
 @bot.tree.command(name="status", description="แสดงสถานะของบอท")
@@ -352,20 +414,27 @@ async def status_command(interaction: discord.Interaction):
 #=============================================================================================
 # 📩 Admin Commands
 #=============================================================================================
-#⚠️ /say ส่งข้อความไปยังห้องที่กำหนด
-@bot.tree.command(name="say", description="ให้บอทส่งข้อความไปยังห้องที่กำหนด (เฉพาะแอดมิน)")
-@app_commands.describe(channel="เลือกห้องที่ต้องการส่งข้อความ", message="ข้อความที่จะส่ง")
-async def say_command(interaction: discord.Interaction, channel: discord.TextChannel, message: str):
+#⚠️ /announce ส่งข้อความไปยังห้องที่กำหนด
+@bot.tree.command(name="announce", description="ให้บอทส่งข้อความประกาศไปยังห้องที่กำหนด (เฉพาะแอดมิน)")
+@app_commands.describe(
+    channel="เลือกห้องที่ต้องการส่งข้อความ",
+    message="ข้อความที่จะส่ง",
+    image_url="URL ของรูปภาพ (ถ้ามี)"
+)
+async def announce_command(interaction: discord.Interaction, channel: discord.TextChannel, message: str, image_url: Optional[str] = None):
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("❌ คุณไม่มีสิทธิ์ใช้คำสั่งนี้ (ต้องเป็นแอดมิน)", ephemeral=True)
         return
 
     # แสดงข้อความตัวอย่างพร้อมปุ่มยืนยัน
     embed = discord.Embed(
-        title="📢 ยืนยันการส่งข้อความ",
+        title="📢 ยืนยันการส่งข้อความประกาศ",
         description=f"**ข้อความที่จะส่ง:**\n{message}\n\n**ห้อง:** {channel.mention}",
         color=discord.Color.orange()
     )
+    if image_url:
+        embed.set_image(url=image_url)
+
     view = ConfirmationView()
     await interaction.response.send_message("⚠️ คุณต้องการส่งข้อความนี้หรือไม่?", embed=embed, view=view, ephemeral=True)
 
@@ -377,7 +446,11 @@ async def say_command(interaction: discord.Interaction, channel: discord.TextCha
         return
     elif view.value:
         try:
-            await channel.send(message)
+            # ส่งข้อความพร้อมรูปภาพ
+            embed = discord.Embed(description=message, color=discord.Color.green())
+            if image_url:
+                embed.set_image(url=image_url)
+            await channel.send(embed=embed)
             await interaction.followup.send(f"✅ ส่งข้อความไปยังห้อง {channel.mention} สำเร็จ!", ephemeral=True)
         except discord.Forbidden:
             await interaction.followup.send(f"❌ ไม่สามารถส่งข้อความไปยังห้อง {channel.mention} ได้ (บอทอาจไม่มีสิทธิ์)", ephemeral=True)
@@ -389,8 +462,12 @@ async def say_command(interaction: discord.Interaction, channel: discord.TextCha
 #=============================================================================================
 #⚠️ /dm ส่งข้อความ DM ให้สมาชิกเฉพาะ Role
 @bot.tree.command(name="dm", description="ส่ง DM ให้สมาชิกเฉพาะ Role (เฉพาะแอดมิน)")
-@app_commands.describe(role="เลือก Role ที่ต้องการส่งถึง", message="ข้อความที่จะส่ง")
-async def dm(interaction: discord.Interaction, role: discord.Role, message: str):
+@app_commands.describe(
+    role="เลือก Role ที่ต้องการส่งถึง",
+    message="ข้อความที่จะส่ง",
+    image_url="URL ของรูปภาพ (ถ้ามี)"
+)
+async def dm(interaction: discord.Interaction, role: discord.Role, message: str, image_url: Optional[str] = None):
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("❌ คุณไม่มีสิทธิ์ใช้คำสั่งนี้ (ต้องเป็นแอดมิน)", ephemeral=True)
         return
@@ -406,6 +483,9 @@ async def dm(interaction: discord.Interaction, role: discord.Role, message: str)
         description=f"**ข้อความที่จะส่ง:**\n{message}\n\n**Role:** {role.mention}\n**จำนวนสมาชิก:** {len(members)} คน",
         color=discord.Color.orange()
     )
+    if image_url:
+        embed.set_image(url=image_url)
+
     view = ConfirmationView()
     await interaction.response.send_message("⚠️ คุณต้องการส่งข้อความนี้หรือไม่?", embed=embed, view=view, ephemeral=True)
 
@@ -419,7 +499,11 @@ async def dm(interaction: discord.Interaction, role: discord.Role, message: str)
         success, failed = 0, 0
         for member in members:
             try:
-                await member.send(message)
+                # ส่งข้อความ DM พร้อมรูปภาพ
+                embed = discord.Embed(description=message, color=discord.Color.green())
+                if image_url:
+                    embed.set_image(url=image_url)
+                await member.send(embed=embed)
                 success += 1
             except discord.Forbidden:
                 failed += 1
