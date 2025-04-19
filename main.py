@@ -214,7 +214,7 @@ class ConfirmationView(View):
     editor="ชื่อผู้แก้ไข (เช่น @Silver BlackWell)",
     preset="Mod ที่ใช้งาน (เช่น69Ranger RE Preset Edit V5) หากมี Mod เพิ่มให้แจ้งที่ช่องนี้ได้เลย ",
     tags="แท็กผู้เข้าร่วม (เช่น @everyone)",
-    story="เนื้อเรื่องของกิจกรรม",
+    story="เนื้อเรื่องของกิจกรรม [สามารถใช้ \n เพื่อขึ้นบรรทัดใหม่ได้]", 
     roles="บทบาทที่ได้เล่น (เช่น 75th Ranger Regiment)",
     image_url="URL ของรูปภาพกิจกรรม (ถ้ามี)"
 )
@@ -246,7 +246,14 @@ async def create_event(interaction: discord.Interaction,
     # สร้าง Embed ตัวอย่าง
     embed = discord.Embed(
         title=f"📌 {operation}",
-        description=f"<t:{timestamp}:F> | <t:{timestamp}:R>\n**Editor:** {editor}\n**Preset:** {preset}\n**Roles:** {roles}\n**Tags:** {tags}\n\n📖 **Story:**\n{story}",
+        description=(
+            f"<t:{timestamp}:F> | <t:{timestamp}:R>\n"
+            f"**Editor:** {editor}\n"
+            f"**Preset:** {preset}\n"
+            f"**Roles:** {roles}\n"
+            f"**Tags:** {tags}\n\n"
+            f"📖 **Story:**\n{story.replace('\\n', '\n')}"  # ใช้ .replace เพื่อให้ \n ทำงาน
+        ),
         color=discord.Color.red()
     )
     embed.add_field(name="จำนวนผู้ตอบรับ", value=counts_text, inline=False)
