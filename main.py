@@ -270,9 +270,9 @@ class ConfirmationView(View):
     operation="ชื่อ Operation (เช่น The Darknight Ep.4)",
     editor="ชื่อผู้แก้ไข (เช่น @Silver BlackWell)",
     preset="Mod ที่ใช้งาน (เช่น69Ranger RE Preset Edit V5) หากมี Mod เพิ่มให้แจ้งที่ช่องนี้ได้เลย ",
-    tags="แท็กผู้เข้าร่วม (เช่น @everyone)",
+    tags="แท็กผู้เข้าร่วม เลือก Role ที่ต้องการแท็ก (ห้าม @everyone หรือ @here)",
     story="เนื้อเรื่องของกิจกรรม (เช่น เรื่องราวที่เกี่ยวข้องกับกิจกรรม)", 
-    roles="บทบาทที่ได้เล่น (เช่น 75th Ranger Regiment) หากต้องการนักบินให้แจ้งเพิ่มเติม เช่น 1-2 Pilot is required",
+    roles="บทบาทที่ได้เล่น (เช่น 75th Ranger Regiment) หากต้องการนักบินให้แจ้งเพิ่มเติม | required Pilot 1-2   ",
     image_url="URL ของรูปภาพกิจกรรม (ถ้ามี)"
 )
 async def create_event(interaction: discord.Interaction, 
@@ -365,33 +365,40 @@ async def create_event(interaction: discord.Interaction,
     else:
         await interaction.followup.send("❌ การส่งข้อความถูกยกเลิก", ephemeral=True)
 
-    # DM ไปยัง Role @69Rg Member
-    role = discord.utils.get(interaction.guild.roles, name="[DEV] ModManager")
-    if role:
-        msg_link = f"https://discord.com/channels/{interaction.guild.id}/{channel.id}/{msg.id}"
-        for member in role.members:
-            if member.bot:
-                continue
-            try:
-                # สร้าง Embed สำหรับข้อความ DM
-                embed = discord.Embed(
-                    title="📣 มีกิจกรรมใหม่!",
-                    description=(
-                        f"**📌 ชื่อกิจกรรม:** {operation}\n"
-                        f"**📅 วันที่:** <t:{timestamp}:D>\n"
-                        f"**🕒 เวลา:** <t:{timestamp}:t>\n\n"
-                        f"หากสนใจเข้าร่วมกิจกรรม สามารถตอบรับได้ที่โพสต์นี้\n"
-                        f"[🔗 ดูรายละเอียดกิจกรรม]({msg_link})"
-                    ),
-                    color=discord.Color.blue()
-                )
-                embed.set_footer(
-                    text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
-                    icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
-                )
-                await member.send(embed=embed)
-            except Exception as e:
-                logging.warning(f"❌ ไม่สามารถส่งข้อความให้ {member.name}: {e}")
+    # DM ไปยัง Role ที่ถูกแท็กใน tags
+    if tags:
+        # แยกค่า tags ออกเป็นรายการ
+        tag_list = tags.split()
+        for tag in tag_list:
+            # ตรวจสอบว่าเป็น Role หรือไม่
+            if tag.startswith("<@&"):  # Role
+                role_id = int(tag.replace("<@&", "").replace(">", ""))
+                role = discord.utils.get(interaction.guild.roles, id=role_id)
+                if role:
+                    msg_link = f"https://discord.com/channels/{interaction.guild.id}/{channel.id}/{msg.id}"
+                    for member in role.members:
+                        if member.bot:
+                            continue
+                        try:
+                            # สร้าง Embed สำหรับข้อความ DM
+                            embed = discord.Embed(
+                                title="📣 มีกิจกรรมใหม่!",
+                                description=(
+                                    f"**📌 ชื่อกิจกรรม:** {operation}\n"
+                                    f"**📅 วันที่:** <t:{timestamp}:D>\n"
+                                    f"**🕒 เวลา:** <t:{timestamp}:t>\n\n"
+                                    f"หากสนใจเข้าร่วมกิจกรรม สามารถตอบรับได้ที่โพสต์นี้\n"
+                                    f"[🔗 ดูรายละเอียดกิจกรรม]({msg_link})"
+                                ),
+                                color=discord.Color.blue()
+                            )
+                            embed.set_footer(
+                                text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
+                                icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
+                            )
+                            await member.send(embed=embed)
+                        except Exception as e:
+                            logging.warning(f"❌ ไม่สามารถส่งข้อความให้ {member.name}: {e}")
 #=============================================================================================
 #⚠️ /Help แสดงคำสั่งทั้งหมดของบอท
 @bot.tree.command(name="help", description="แสดงคำสั่งทั้งหมดของบอท")
