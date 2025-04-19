@@ -214,7 +214,7 @@ class ConfirmationView(View):
     editor="ชื่อผู้แก้ไข (เช่น @Silver BlackWell)",
     preset="Mod ที่ใช้งาน (เช่น69Ranger RE Preset Edit V5) หากมี Mod เพิ่มให้แจ้งที่ช่องนี้ได้เลย ",
     tags="แท็กผู้เข้าร่วม (เช่น @everyone)",
-    story="เนื้อเรื่องของกิจกรรม [สามารถใช้ \n เพื่อขึ้นบรรทัดใหม่ได้]", 
+    story="เนื้อเรื่องของกิจกรรม [สามารถใช้ \ n เพื่อขึ้นบรรทัดใหม่ได้]", 
     roles="บทบาทที่ได้เล่น (เช่น 75th Ranger Regiment)",
     image_url="URL ของรูปภาพกิจกรรม (ถ้ามี)"
 )
