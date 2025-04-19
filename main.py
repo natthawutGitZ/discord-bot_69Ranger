@@ -369,6 +369,8 @@ async def create_event(interaction: discord.Interaction,
     if tags:
         # แยกค่า tags ออกเป็นรายการ
         tag_list = tags.split()
+        sent_users = set()  # เก็บ user_id ของผู้ใช้ที่ส่งข้อความไปแล้ว
+    
         for tag in tag_list:
             # ตรวจสอบว่าเป็น Role หรือไม่
             if tag.startswith("<@&"):  # Role
@@ -377,8 +379,8 @@ async def create_event(interaction: discord.Interaction,
                 if role:
                     msg_link = f"https://discord.com/channels/{interaction.guild.id}/{channel.id}/{msg.id}"
                     for member in role.members:
-                        if member.bot:
-                            continue
+                        if member.bot or member.id in sent_users:
+                            continue  # ข้ามผู้ใช้ที่เป็นบอทหรือส่งข้อความไปแล้ว
                         try:
                             # สร้าง Embed สำหรับข้อความ DM
                             embed = discord.Embed(
@@ -397,6 +399,7 @@ async def create_event(interaction: discord.Interaction,
                                 icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
                             )
                             await member.send(embed=embed)
+                            sent_users.add(member.id)  # เพิ่ม user_id ลงใน set
                         except Exception as e:
                             logging.warning(f"❌ ไม่สามารถส่งข้อความให้ {member.name}: {e}")
 #=============================================================================================
