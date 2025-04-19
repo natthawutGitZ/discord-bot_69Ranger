@@ -132,41 +132,40 @@ async def event_timer(event_id):
         await asyncio.sleep(wait_time)
 
         # แจ้งเตือน 10 นาทีก่อนเริ่มกิจกรรม
-    for user_mention in event['joined']:
-        try:
-            user_id = int(user_mention.replace("<@!", "").replace("<@", "").replace(">", ""))
-            user = await bot.fetch_user(user_id)
-            
-            # สร้าง Embed สำหรับแจ้งเตือน
-            embed = discord.Embed(
-                title="🔔 แจ้งเตือนกิจกรรม",
-                description=(
-                    f"อีก 10 นาทีจะถึงเวลา **{event['operation']}** กำลังจะเริ่มแล้ว!\n"
-                    "ขอให้ผู้เล่นเตรียมตัวเข้า TeamSpeak 3 | Arma3 รอได้เลย!!!"
-                ),
-                color=discord.Color.orange()
-            )
-            embed.set_footer(
-                text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
-                icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
-            )
-            await user.send(embed=embed)
-        except Exception as e:
-            print(f"[ERROR] DM failed for {user_mention}: {e}")
+        for user_mention in event['joined'] + event['maybe']:  # รวมผู้ที่ตอบว่าเข้าร่วมและอาจจะเข้าร่วม
             try:
-                # ส่งข้อความแจ้งเตือนใน Thread
+                user_id = int(user_mention.replace("<@!", "").replace("<@", "").replace(">", ""))
+                user = await bot.fetch_user(user_id)
+                
+                # สร้าง Embed สำหรับแจ้งเตือน
                 embed = discord.Embed(
                     title="🔔 แจ้งเตือนกิจกรรม",
                     description=(
-                        f"{user_mention} อีก 10 นาทีจะถึงเวลา **{event['operation']}** กำลังจะเริ่มแล้ว!\n"
+                        f"อีก 10 นาทีจะถึงเวลา **{event['operation']}** กำลังจะเริ่มแล้ว!\n"
                         "ขอให้ผู้เล่นเตรียมตัวเข้า TeamSpeak 3 | Arma3 รอได้เลย!!!"
                     ),
                     color=discord.Color.orange()
                 )
-                await event['thread'].send(embed=embed)
-            except Exception as thread_error:
-                print(f"[ERROR] Failed to send to thread for {user_mention}: {thread_error}")
-
+                embed.set_footer(
+                    text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
+                    icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
+                )
+                await user.send(embed=embed)
+            except Exception as e:
+                print(f"[ERROR] DM failed for {user_mention}: {e}")
+                try:
+                    # ส่งข้อความแจ้งเตือนใน Thread
+                    embed = discord.Embed(
+                        title="🔔 แจ้งเตือนกิจกรรม",
+                        description=(
+                            f"{user_mention} อีก 10 นาทีจะถึงเวลา **{event['operation']}** กำลังจะเริ่มแล้ว!\n"
+                            "ขอให้ผู้เล่นเตรียมตัวเข้า TeamSpeak 3 | Arma3 รอได้เลย!!!"
+                        ),
+                        color=discord.Color.orange()
+                    )
+                    await event['thread'].send(embed=embed)
+                except Exception as thread_error:
+                    print(f"[ERROR] Failed to send to thread for {user_mention}: {thread_error}")
     now = datetime.now(bangkok_tz)
     wait_until_start = (event['start_time'] - now).total_seconds()
     if wait_until_start > 0:
@@ -176,8 +175,8 @@ async def event_timer(event_id):
     embed.title = f"🟢 {event['operation']} (อยู่ในระหว่างกำลังดำเนินการ)"
     await event['message'].edit(embed=embed, view=None)
 
-       # ส่ง DM แจ้งว่าเริ่มกิจกรรมแล้ว
-    for user_mention in event['joined']:
+    # ส่ง DM แจ้งว่าเริ่มกิจกรรมแล้ว
+    for user_mention in event['joined'] + event['maybe']:  # รวมผู้ที่ตอบว่าเข้าร่วมและอาจจะเข้าร่วม
         try:
             user_id = int(user_mention.replace("<@!", "").replace("<@", "").replace(">", ""))
             user = await bot.fetch_user(user_id)
