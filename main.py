@@ -131,7 +131,7 @@ async def event_timer(event_id):
     if wait_time > 0:
         await asyncio.sleep(wait_time)
 
-    f    # แจ้งเตือน 10 นาทีก่อนเริ่มกิจกรรม
+        # แจ้งเตือน 10 นาทีก่อนเริ่มกิจกรรม
     for user_mention in event['joined']:
         try:
             user_id = int(user_mention.replace("<@!", "").replace("<@", "").replace(">", ""))
