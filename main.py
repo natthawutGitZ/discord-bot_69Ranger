@@ -16,6 +16,7 @@ import logging
 import pytz
 import asyncio
 import uuid
+import re  
 
 from datetime import datetime, timedelta
 from typing import Optional
@@ -271,28 +272,32 @@ async def create_event(interaction: discord.Interaction,
     add_mod: Optional[str] = None,
     image_url: Optional[str] = None):
 
+   
+
     try:
-        # แยกวันที่และเวลาเริ่มต้น-สิ้นสุด
-        day, month, year_time = datetime_input.split("-")
-        year, time_range = year_time.split(" ")
-        start_time, end_time = time_range.split("-")
-        start_hour, start_minute = start_time.split(":")
-        end_hour, end_minute = end_time.split(":")
-        year = int(year) - 543
-    
-        # แปลงเวลาเริ่มต้นและสิ้นสุดเป็น datetime
-        start_dt = datetime(int(year), int(month), int(day), int(start_hour), int(start_minute))
-        end_dt = datetime(int(year), int(month), int(day), int(end_hour), int(end_minute))
-    
-        # ตรวจสอบกรณีเวลาสิ้นสุดอยู่ในวันถัดไป
+        # ลบช่องว่างเกินและใช้ regex เพื่อจับรูปแบบวันเวลา
+        match = re.match(r"\s*(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})\s*", datetime_input)
+        if not match:
+            raise ValueError("รูปแบบไม่ตรง")
+
+        day, month, year, start_hour, start_minute, end_hour, end_minute = map(int, match.groups())
+        year -= 543  # แปลง พ.ศ. เป็น ค.ศ.
+
+        start_dt = datetime(year, month, day, start_hour, start_minute)
+        end_dt = datetime(year, month, day, end_hour, end_minute)
+
         if end_dt < start_dt:
             end_dt += timedelta(days=1)
-    
+
         start_dt = bangkok_tz.localize(start_dt)
         end_dt = bangkok_tz.localize(end_dt)
-    except:
-        await interaction.response.send_message("❌ รูปแบบวันที่ไม่ถูกต้อง ใช้: 01-01-2568 20:30-23:30", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(
+            f"❌ รูปแบบวันที่ไม่ถูกต้อง ใช้: 01-01-2568 20:30-23:30\n📌 Error: {str(e)}",
+            ephemeral=True
+        )
         return
+
 
     start_timestamp = int(start_dt.timestamp())
     end_timestamp = int(end_dt.timestamp())
