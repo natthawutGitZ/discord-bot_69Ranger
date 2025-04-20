@@ -255,7 +255,7 @@ class ConfirmationView(View):
     roles="บทบาทที่ได้เล่น (เช่น 75th Ranger Regiment)",
     story="เนื้อเรื่องของกิจกรรม (เช่น เรื่องราวที่เกี่ยวข้องกับกิจกรรม)",
     story_secondary="เนื้อเรื่องรองของกิจกรรม (ถ้ามี)",
-    add_mod="ลิงก์ Mod เพิ่มเติม (ใส่หลายลิงก์คั่นด้วยเครื่องหมายจุลภาค ',')",
+    add_mod="ลิงก์ Mod เพิ่มเติม (ใส่หลายลิงก์คั่นด้วยเครื่องหมายจุลภาค ',')(ถ้ามี)",
     image_url="URL ของรูปภาพกิจกรรม (ถ้ามี)"
 )
 async def create_event(interaction: discord.Interaction, 
@@ -279,14 +279,19 @@ async def create_event(interaction: discord.Interaction,
         start_hour, start_minute = start_time.split(":")
         end_hour, end_minute = end_time.split(":")
         year = int(year) - 543
-
+    
         # แปลงเวลาเริ่มต้นและสิ้นสุดเป็น datetime
         start_dt = datetime(int(year), int(month), int(day), int(start_hour), int(start_minute))
         end_dt = datetime(int(year), int(month), int(day), int(end_hour), int(end_minute))
+    
+        # ตรวจสอบกรณีเวลาสิ้นสุดอยู่ในวันถัดไป
+        if end_dt < start_dt:
+            end_dt += timedelta(days=1)
+    
         start_dt = bangkok_tz.localize(start_dt)
         end_dt = bangkok_tz.localize(end_dt)
     except:
-        await interaction.response.send_message("❌ รูปแบบวันที่ไม่ถูกต้อง ใช้: 01-01-2568 20:30-22:30", ephemeral=True)
+        await interaction.response.send_message("❌ รูปแบบวันที่ไม่ถูกต้อง ใช้: 01-01-2568 20:30-23:30", ephemeral=True)
         return
 
     start_timestamp = int(start_dt.timestamp())
