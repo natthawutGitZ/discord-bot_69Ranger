@@ -389,7 +389,7 @@ async def create_event(interaction: discord.Interaction,
         async def maybe(self, interaction: discord.Interaction, button: Button):
             await interaction.response.send_message("คุณเลือกที่จะอาจจะเข้าร่วมกิจกรรม!", ephemeral=True)
     
-        @discord.ui.button(label="ดู Mod เพิ่มเติม", style=discord.ButtonStyle.primary, emoji="🔗")
+        @discord.ui.button(label="Mod เพิ่มเติม", style=discord.ButtonStyle.primary, emoji="🔗")
         async def view_mod(self, interaction: discord.Interaction, button: Button):
             if self.mod_links:
                 # สร้าง Embed สำหรับแสดง Mod
