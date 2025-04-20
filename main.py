@@ -122,16 +122,18 @@ async def update_summary_embed(event):
         thread_msg = await event['thread'].send(embed=embed)
         event['thread_message'] = thread_msg
 
+
+# ฟังก์ชันอัปเดตสถานะกิจกรรมเมื่อสิ้นสุด
 async def event_timer(event_id):
     event = events[event_id]
     now = datetime.now(bangkok_tz)
-    wait_time = (event['start_time'] - now).total_seconds() - 600
-    print(f"[TIMER] Waiting {wait_time} seconds until 10-min warning for event {event['operation']}")
+    wait_time = (event['start_time'] - now).total_seconds() - 1800  # แจ้งเตือน 30 นาทีก่อนเริ่มกิจกรรม
+    print(f"[TIMER] Waiting {wait_time} seconds until 30-min warning for event {event['operation']}")
 
     if wait_time > 0:
         await asyncio.sleep(wait_time)
 
-        # แจ้งเตือน 10 นาทีก่อนเริ่มกิจกรรม
+        # แจ้งเตือน 30 นาทีก่อนเริ่มกิจกรรม
         for user_mention in event['joined'] + event['maybe']:  # รวมผู้ที่ตอบว่าเข้าร่วมและอาจจะเข้าร่วม
             try:
                 user_id = int(user_mention.replace("<@!", "").replace("<@", "").replace(">", ""))
@@ -141,7 +143,7 @@ async def event_timer(event_id):
                 embed = discord.Embed(
                     title="🔔 แจ้งเตือนกิจกรรม",
                     description=(
-                        f"อีก 10 นาทีจะถึงเวลา **{event['operation']}** กำลังจะเริ่มแล้ว!\n"
+                        f"อีก 30 นาทีจะถึงเวลา **{event['operation']}** กำลังจะเริ่มแล้ว!\n"
                         "ขอให้ผู้เล่นเตรียมตัวเข้า TeamSpeak 3 | Arma3 รอได้เลย!!!"
                     ),
                     color=discord.Color.orange()
@@ -153,26 +155,17 @@ async def event_timer(event_id):
                 await user.send(embed=embed)
             except Exception as e:
                 print(f"[ERROR] DM failed for {user_mention}: {e}")
-                try:
-                    # ส่งข้อความแจ้งเตือนใน Thread
-                    embed = discord.Embed(
-                        title="🔔 แจ้งเตือนกิจกรรม",
-                        description=(
-                            f"{user_mention} อีก 10 นาทีจะถึงเวลา **{event['operation']}** กำลังจะเริ่มแล้ว!\n"
-                            "ขอให้ผู้เล่นเตรียมตัวเข้า TeamSpeak 3 | Arma3 รอได้เลย!!!"
-                        ),
-                        color=discord.Color.orange()
-                    )
-                    await event['thread'].send(embed=embed)
-                except Exception as thread_error:
-                    print(f"[ERROR] Failed to send to thread for {user_mention}: {thread_error}")
-    now = datetime.now(bangkok_tz)
-    wait_until_start = (event['start_time'] - now).total_seconds()
-    if wait_until_start > 0:
-        await asyncio.sleep(wait_until_start)
+                # ไม่ส่งข้อความใน Thread หาก DM ล้มเหลว
+                continue
 
+    now = datetime.now(bangkok_tz)
+    wait_until_end = (event['end_time'] - now).total_seconds()
+    if wait_until_end > 0:
+        await asyncio.sleep(wait_until_end)
+
+    # อัปเดตสถานะกิจกรรมเป็นจบ
     embed = event['embed']
-    embed.title = f"🟢 {event['operation']} (อยู่ในระหว่างกำลังดำเนินการ)"
+    embed.title = f"⚫ {event['operation']} (กิจกรรมได้จบลงแล้ว)"
     await event['message'].edit(embed=embed, view=None)
 
     # ส่ง DM แจ้งว่าเริ่มกิจกรรมแล้ว
@@ -197,19 +190,8 @@ async def event_timer(event_id):
             await user.send(embed=embed)
         except Exception as e:
             print(f"[ERROR] Failed to DM user {user_mention}: {e}")
-            try:
-                # ส่งข้อความแจ้งเตือนใน Thread
-                embed = discord.Embed(
-                    title="🟢 กิจกรรมเริ่มต้นแล้ว!",
-                    description=(
-                        f"{user_mention} **{event['operation']}** ได้เริ่มต้นขึ้นแล้ว!\n"
-                        "ขอให้ผู้เล่นเข้าเซิร์ฟเวอร์โดยด่วน!!!"
-                    ),
-                    color=discord.Color.green()
-                )
-                await event['thread'].send(embed=embed)
-            except Exception as thread_error:
-                print(f"[ERROR] Failed to send to thread for {user_mention}: {thread_error}")
+            # ไม่ส่งข้อความใน Thread หาก DM ล้มเหลว
+            continue
 
     # รอ 3 ชั่วโมง 30 นาที แล้วอัปเดตสถานะเป็นจบ
     await asyncio.sleep(3.5 * 3600)
@@ -265,13 +247,13 @@ class ConfirmationView(View):
 @tree.command(name="event", description="สร้างกิจกรรมพร้อมปุ่มตอบรับ")
 @app_commands.describe(
     channel="เลือกห้องที่จะโพสต์กิจกรรม",
-    datetime_input="วันและเวลาของกิจกรรม (เช่น 01-01-2568 20:30)",
+    datetime_input="วันและเวลาของกิจกรรม (เช่น 01-01-2568 20:30-22:30)",
     operation="ชื่อ Operation (เช่น The Darknight Ep.4)",
     editor="ชื่อผู้แก้ไข (เช่น @Silver BlackWell)",
-    preset="Mod ที่ใช้งาน (เช่น69Ranger RE Preset Edit V5) หากมี Mod เพิ่มให้แจ้งที่ช่องนี้ได้เลย ",
+    preset="Mod ที่ใช้งาน (เช่น69Ranger RE Preset Edit V5) หากมี Mod เพิ่มให้แจ้งที่ช่องนี้ได้เลย",
     tags="แท็กผู้เข้าร่วม เลือก Role ที่ต้องการแท็ก (ห้าม @everyone หรือ @here)",
-    story="เนื้อเรื่องของกิจกรรม (เช่น เรื่องราวที่เกี่ยวข้องกับกิจกรรม)", 
-    roles="บทบาทที่ได้เล่น (เช่น 75th Ranger Regiment) หากต้องการนักบินให้แจ้งเพิ่มเติม | required Pilot 1-2   ",
+    story="เนื้อเรื่องของกิจกรรม (เช่น เรื่องราวที่เกี่ยวข้องกับกิจกรรม)",
+    roles="บทบาทที่ได้เล่น (เช่น 75th Ranger Regiment) หากต้องการนักบินให้แจ้งเพิ่มเติม | required Pilot 1-2",
     image_url="URL ของรูปภาพกิจกรรม (ถ้ามี)"
 )
 async def create_event(interaction: discord.Interaction, 
@@ -286,29 +268,37 @@ async def create_event(interaction: discord.Interaction,
     image_url: str = None):
 
     try:
+        # แยกวันที่และเวลาเริ่มต้น-สิ้นสุด
         day, month, year_time = datetime_input.split("-")
-        year, time = year_time.split(" ")
-        hour, minute = time.split(":")
+        year, time_range = year_time.split(" ")
+        start_time, end_time = time_range.split("-")
+        start_hour, start_minute = start_time.split(":")
+        end_hour, end_minute = end_time.split(":")
         year = int(year) - 543
-        dt = datetime(int(year), int(month), int(day), int(hour), int(minute))
-        dt = bangkok_tz.localize(dt)
+
+        # แปลงเวลาเริ่มต้นและสิ้นสุดเป็น datetime
+        start_dt = datetime(int(year), int(month), int(day), int(start_hour), int(start_minute))
+        end_dt = datetime(int(year), int(month), int(day), int(end_hour), int(end_minute))
+        start_dt = bangkok_tz.localize(start_dt)
+        end_dt = bangkok_tz.localize(end_dt)
     except:
-        await interaction.response.send_message("❌ รูปแบบวันที่ไม่ถูกต้อง ใช้: 01-01-2568 20:30", ephemeral=True)
+        await interaction.response.send_message("❌ รูปแบบวันที่ไม่ถูกต้อง ใช้: 01-01-2568 20:30-22:30", ephemeral=True)
         return
 
-    timestamp = int(dt.timestamp())
+    start_timestamp = int(start_dt.timestamp())
+    end_timestamp = int(end_dt.timestamp())
     counts_text = f"✅เข้าร่วม 0 คน | ❌ไม่เข้าร่วม 0 คน | ❓อาจจะเข้าร่วม 0 คน"
 
     # สร้าง Embed ตัวอย่าง
     embed = discord.Embed(
         title=f"📌 {operation}",
         description=(
-            f"<t:{timestamp}:F> | <t:{timestamp}:R>\n"
+            f"<t:{start_timestamp}:F> | <t:{start_timestamp}:R>\n"
             f"**Editor:** {editor}\n"
             f"**Preset:** {preset}\n"
             f"**Tags:** {tags}\n\n"
             f"📖 **Story:**\n{story}\n\n"  
-             f"**Roles:** {roles}"
+            f"**Roles:** {roles}"
         ),
         color=discord.Color.red()
     )
@@ -352,8 +342,9 @@ async def create_event(interaction: discord.Interaction,
             'declined': [],
             'maybe': [],
             'embed': embed,
-            'timestamp': timestamp,
-            'start_time': dt,
+            'timestamp': start_timestamp,
+            'start_time': start_dt,
+            'end_time': end_dt,
             'thread': thread,
             'message': msg
         }
@@ -363,6 +354,7 @@ async def create_event(interaction: discord.Interaction,
         await interaction.followup.send("✅ ข้อความถูกส่งเรียบร้อยแล้ว!", ephemeral=True)
     else:
         await interaction.followup.send("❌ การส่งข้อความถูกยกเลิก", ephemeral=True)
+
 
     # DM ไปยัง Role ที่ถูกแท็กใน tags
     if tags:
