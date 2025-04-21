@@ -347,24 +347,27 @@ async def create_event(interaction: discord.Interaction,
             f"<t:{start_timestamp}:F> | <t:{start_timestamp}:R>\n"
             f"**Editor:** {editor}\n"
             f"**Preset:** {preset}\n"
-            f"**Tags:** {tags}\n\n"
+            f"**Tags:** {tags}\n"
+             f"**Roles:** {roles}\n\n"
             f"📖 **Story:**\n{story}\n\n"  
-            f"**Roles:** {roles}"
+           
         ),
         color=discord.Color.red()
     )
-    embed.add_field(name="จำนวนผู้ตอบรับ", value=counts_text, inline=False)
+
 
     # เพิ่มเนื้อเรื่องรอง (ถ้ามี)
     if story_secondary:
-        embed.add_field(name="📖 Story รอง", value=story_secondary, inline=False)
+        embed.add_field(name="", value=story_secondary, inline=False)
 
-    # เพิ่มลิงก์ Mod (ถ้ามี)
-    mod_links = []
-    if add_mod:
-        mod_links = [link.strip() for link in add_mod.split(",")]
-        for i, link in enumerate(mod_links, start=1):
-            embed.add_field(name=f"🔗 Mod เพิ่มเติม #{i}", value=f"[คลิกเพื่อดูข้อมูลเพิ่มเติม]({link})", inline=False)
+    # # เพิ่มลิงก์ Mod (ถ้ามี)
+    # mod_links = []
+    # if add_mod:
+    #     mod_links = [link.strip() for link in add_mod.split(",")]
+    #     for i, link in enumerate(mod_links, start=1):
+    #         embed.add_field(name=f"🔗 Mod เพิ่มเติม #{i}", value=f"[คลิกเพื่อดูข้อมูลเพิ่มเติม]({link})", inline=False)
+
+    embed.add_field(name="จำนวนผู้ตอบรับ", value=counts_text, inline=False)
 
     if image_url:
         embed.set_image(url=image_url)
