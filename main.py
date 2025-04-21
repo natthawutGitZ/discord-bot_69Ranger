@@ -57,6 +57,7 @@ class EventView(View):
         self.message = message
         self.event_id = event_id
         self.mod_links = mod_links
+        self.notified_users = set()  # เก็บรายชื่อผู้ที่กดปุ่ม "รับการแจ้งเตือน"
 
     async def update_counts(self):
         event = events[self.event_id]
@@ -87,19 +88,19 @@ class EventView(View):
         await interaction.response.defer()
         await self.update_counts()
 
-    @discord.ui.button(label="เข้าร่วม", style=discord.ButtonStyle.success, emoji="✅")
+    @discord.ui.button(label="เข้าร่วม", style=discord.ButtonStyle.success, emoji="✅", row=0)
     async def join(self, interaction: discord.Interaction, button: Button):
         await self.handle_response(interaction, 'joined')
 
-    @discord.ui.button(label="ไม่เข้าร่วม", style=discord.ButtonStyle.danger, emoji="❌")
+    @discord.ui.button(label="ไม่เข้าร่วม", style=discord.ButtonStyle.danger, emoji="❌", row=0)
     async def decline(self, interaction: discord.Interaction, button: Button):
         await self.handle_response(interaction, 'declined')
 
-    @discord.ui.button(label="อาจจะมา", style=discord.ButtonStyle.secondary, emoji="❓")
+    @discord.ui.button(label="อาจจะมา", style=discord.ButtonStyle.secondary, emoji="❓", row=0)
     async def maybe(self, interaction: discord.Interaction, button: Button):
         await self.handle_response(interaction, 'maybe')
 
-    @discord.ui.button(label="🔗Mod เพิ่มเติม", style=discord.ButtonStyle.primary, emoji="🔗")
+    @discord.ui.button(label="🔗Mod เพิ่มเติม", style=discord.ButtonStyle.primary, emoji="🔗", row=1)
     async def view_mod(self, interaction: discord.Interaction, button: Button):
         if self.mod_links:
             embed = discord.Embed(
@@ -127,49 +128,32 @@ class EventView(View):
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
 
-async def update_summary_embed(event):
-    joined = event.get('joined') or []
-    declined = event.get('declined') or []
-    maybe = event.get('maybe') or []
-
-    joined_str = "\n".join(joined) if joined else "-"
-    declined_str = "\n".join(declined) if declined else "-"
-    maybe_str = "\n".join(maybe) if maybe else "-"
-
-    embed = discord.Embed(title="📋 สรุปการตอบรับ", color=discord.Color.blue())
-    embed.add_field(name="เข้าร่วม", value=joined_str, inline=True)
-    embed.add_field(name="ไม่เข้าร่วม", value=declined_str, inline=True)
-    embed.add_field(name="อาจจะเข้าร่วม", value=maybe_str, inline=True)
-
-    if 'thread_message' in event:
-        try:
-            await event['thread_message'].edit(embed=embed)
-        except:
-            pass
-    else:
-        thread_msg = await event['thread'].send(embed=embed)
-        event['thread_message'] = thread_msg
+    @discord.ui.button(label="รับการแจ้งเตือน", style=discord.ButtonStyle.success, emoji="🔔", row=1)
+    async def notify(self, interaction: discord.Interaction, button: Button):
+        user_id = interaction.user.id
+        if user_id not in self.notified_users:
+            self.notified_users.add(user_id)
+            await interaction.response.send_message("✅ คุณจะได้รับการแจ้งเตือนทาง DM!", ephemeral=True)
+        else:
+            await interaction.response.send_message("❌ คุณได้สมัครรับการแจ้งเตือนไปแล้ว!", ephemeral=True)
 
 async def event_timer(event_id):
     event = events[event_id]
     now = datetime.now(bangkok_tz)
-    wait_time = (event['start_time'] - now).total_seconds() - 600
-    print(f"[TIMER] Waiting {wait_time} seconds until 10-min warning for event {event['operation']}")
+    wait_time = (event['start_time'] - now).total_seconds() - 1800  # แจ้งเตือน 30 นาทีก่อนเริ่มกิจกรรม
+    print(f"[TIMER] Waiting {wait_time} seconds until 30-min warning for event {event['operation']}")
 
     if wait_time > 0:
         await asyncio.sleep(wait_time)
 
-        # แจ้งเตือน 10 นาทีก่อนเริ่มกิจกรรม
-        for user_mention in event['joined'] + event['maybe']:  # รวมผู้ที่ตอบว่าเข้าร่วมและอาจจะเข้าร่วม
+        # แจ้งเตือน 30 นาทีก่อนเริ่มกิจกรรม
+        for user_id in event['view'].notified_users:  # ส่ง DM เฉพาะผู้ที่กดปุ่ม "รับการแจ้งเตือน"
             try:
-                user_id = int(user_mention.replace("<@!", "").replace("<@", "").replace(">", ""))
                 user = await bot.fetch_user(user_id)
-                
-                # สร้าง Embed สำหรับแจ้งเตือน
                 embed = discord.Embed(
-                    title="🔔 แจ้งเตือนกิจกรรม",
+                    title="� แจ้งเตือนกิจกรรม",
                     description=(
-                        f"อีก 10 นาทีจะถึงเวลา **{event['operation']}** กำลังจะเริ่มแล้ว!\n"
+                        f"อีก 30 นาทีจะถึงเวลา **{event['operation']}** กำลังจะเริ่มแล้ว!\n"
                         "ขอให้ผู้เล่นเตรียมตัวเข้า TeamSpeak 3 | Arma3 รอได้เลย!!!"
                     ),
                     color=discord.Color.orange()
@@ -180,20 +164,40 @@ async def event_timer(event_id):
                 )
                 await user.send(embed=embed)
             except Exception as e:
-                print(f"[ERROR] DM failed for {user_mention}: {e}")
-                try:
-                    # ส่งข้อความแจ้งเตือนใน Thread
-                    embed = discord.Embed(
-                        title="🔔 แจ้งเตือนกิจกรรม",
-                        description=(
-                            f"{user_mention} อีก 10 นาทีจะถึงเวลา **{event['operation']}** กำลังจะเริ่มแล้ว!\n"
-                            "ขอให้ผู้เล่นเตรียมตัวเข้า TeamSpeak 3 | Arma3 รอได้เลย!!!"
-                        ),
-                        color=discord.Color.orange()
-                    )
-                    await event['thread'].send(embed=embed)
-                except Exception as thread_error:
-                    print(f"[ERROR] Failed to send to thread for {user_mention}: {thread_error}")
+                print(f"[ERROR] DM failed for user {user_id}: {e}")
+
+    now = datetime.now(bangkok_tz)
+    wait_until_start = (event['start_time'] - now).total_seconds()
+    if wait_until_start > 0:
+        await asyncio.sleep(wait_until_start)
+
+    # แจ้งว่าเริ่มกิจกรรมแล้ว
+    embed = event['embed']
+    embed.title = f"🟢 {event['operation']} (อยู่ในระหว่างกำลังดำเนินการ)"
+    await event['message'].edit(embed=embed, view=None)
+
+    # ส่ง DM แจ้งว่าเริ่มกิจกรรมแล้ว
+    for user_id in event['view'].notified_users:  # ส่ง DM เฉพาะผู้ที่กดปุ่ม "รับการแจ้งเตือน"
+        try:
+            user = await bot.fetch_user(user_id)
+            embed = discord.Embed(
+                title="� กิจกรรมเริ่มต้นแล้ว!",
+                description=(
+                    f"**{event['operation']}** ได้เริ่มต้นขึ้นแล้ว!\n"
+                    "ขอให้ผู้เล่นเข้าเซิร์ฟเวอร์โดยด่วน!!!\n\n"
+                    "หากคุณมีคำถามหรือปัญหาใด ๆ โปรดแจ้งให้ทีมงานทราบ"
+                ),
+                color=discord.Color.green()
+            )
+            embed.set_footer(
+                text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
+                icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
+            )
+            await user.send(embed=embed)
+        except Exception as e:
+            print(f"[ERROR] Failed to DM user {user_id}: {e}")
+
+
     now = datetime.now(bangkok_tz)
     wait_until_start = (event['start_time'] - now).total_seconds()
     if wait_until_start > 0:
@@ -271,7 +275,7 @@ async def event_timer(event_id):
             print(f"[ERROR] Failed to DM user {user_mention}: {e}")
 
 
-from discord.ui import View, Button
+
 
 class ConfirmationView(View):
     def __init__(self):
