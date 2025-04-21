@@ -53,10 +53,11 @@ bangkok_tz = pytz.timezone("Asia/Bangkok")
 events = {}
 
 class EventView(View):
-    def __init__(self, message, event_id):
+    def __init__(self, message, event_id, mod_links):
         super().__init__(timeout=None)
         self.message = message
         self.event_id = event_id
+        self.mod_links = mod_links
 
     async def update_counts(self):
         event = events[self.event_id]
@@ -100,6 +101,24 @@ class EventView(View):
     async def maybe(self, interaction: discord.Interaction, button: Button):
         await self.handle_response(interaction, 'maybe')
 
+    @discord.ui.button(label="🔗Mod เพิ่มเติม", style=discord.ButtonStyle.primary, emoji="🔗")
+    async def view_mod(self, interaction: discord.Interaction, button: Button):
+        if self.mod_links:
+            embed = discord.Embed(
+                title="🔗 Mod เพิ่มเติม",
+                description="ลิงก์ Mod ที่เกี่ยวข้องกับกิจกรรมนี้:",
+                color=discord.Color.blue()
+            )
+            for i, link in enumerate(self.mod_links, start=1):
+                embed.add_field(name=f"Mod #{i}", value=f"[คลิกเพื่อดูข้อมูล]({link})", inline=False)
+
+            embed.set_footer(
+                text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
+                icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        else:
+            await interaction.response.send_message("ไม่มี Mod เพิ่มเติมสำหรับกิจกรรมนี้", ephemeral=True)
 async def update_summary_embed(event):
     joined = event.get('joined') or []
     declined = event.get('declined') or []
@@ -225,29 +244,6 @@ async def event_timer(event_id):
         except Exception as e:
             print(f"[ERROR] Failed to DM user {user_mention}: {e}")
 
-class EventViewWithMod(View):
-    def __init__(self, mod_links):
-        super().__init__(timeout=None)
-        self.mod_links = mod_links
-
-    @discord.ui.button(label="🔗Mod เพิ่มเติม", style=discord.ButtonStyle.primary, emoji="🔗")
-    async def view_mod(self, interaction: discord.Interaction, button: Button):
-        if self.mod_links:
-            embed = discord.Embed(
-                title="🔗 Mod เพิ่มเติม",
-                description="ลิงก์ Mod ที่เกี่ยวข้องกับกิจกรรมนี้:",
-                color=discord.Color.blue()
-            )
-            for i, link in enumerate(self.mod_links, start=1):
-                embed.add_field(name=f"Mod #{i}", value=f"[คลิกเพื่อดูข้อมูล]({link})", inline=False)
-
-            embed.set_footer(
-                text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
-                icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
-            )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-        else:
-            await interaction.response.send_message("ไม่มี Mod เพิ่มเติมสำหรับกิจกรรมนี้", ephemeral=True)
 
 class ConfirmationView(View):
     def __init__(self):
