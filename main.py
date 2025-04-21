@@ -51,6 +51,8 @@ thai_months = ["มกราคม", "กุมภาพันธ์", "มี�
 bangkok_tz = pytz.timezone("Asia/Bangkok")
 events = {}
 
+#=============================================================================================
+# ⚠️ ปุ่มตอบรับกิจกรรม 
 class EventView(View):
     def __init__(self, message, event_id, mod_links):
         super().__init__(timeout=None)
@@ -138,6 +140,8 @@ class EventView(View):
         else:
             await interaction.response.send_message("❌ คุณได้สมัครรับการแจ้งเตือนไปแล้ว!", ephemeral=True)
 
+#=============================================================================================
+# ฟังก์ชันสำหรับอัปเดต Embed สรุปการตอบรับ
 async def update_summary_embed(event):
     joined = event.get('joined') or []
     declined = event.get('declined') or []
@@ -160,8 +164,8 @@ async def update_summary_embed(event):
     else:
         thread_msg = await event['thread'].send(embed=embed)
         event['thread_message'] = thread_msg
-
-
+#=============================================================================================
+# ฟังก์ชันสำหรับการแจ้งเตือนกิจกรรม แจ้งเตือน 30 นาทีก่อนเริ่มกิจกรรม
 async def event_timer(event_id):
     event = events[event_id]
     now = datetime.now(bangkok_tz)
@@ -191,22 +195,45 @@ async def event_timer(event_id):
             except Exception as e:
                 print(f"[ERROR] DM failed for user {user_id}: {e}")
 
+        # แจ้งเตือนใน Thread
+
+    try:
+        embed_30_min = discord.Embed(
+                title="🔔 แจ้งเตือนกิจกรรม",
+                description=(
+                    f"อีก 30 นาทีจะถึงเวลา **{event['operation']}** กำลังจะเริ่มแล้ว!\n"
+                    "ขอให้ผู้เล่นเตรียมตัวเข้า TeamSpeak 3 | Arma3 รอได้เลย!!!"
+                ),
+                color=discord.Color.orange()
+            )
+        embed_30_min.set_footer(
+                text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
+                icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
+            )
+        
+        # ส่ง Embed ไปยัง Thread
+        await event['thread'].send(embed=embed_30_min)
+        print(f"[INFO] Sent 30-minute warning to thread for event {event['operation']}")
+    except Exception as e:
+        print(f"[ERROR] Failed to send 30-minute warning to thread: {e}")
+
+#=============================================================================================
+#อัปเดตสถานะกิจกรรม 
     now = datetime.now(bangkok_tz)
     wait_until_start = (event['start_time'] - now).total_seconds()
     if wait_until_start > 0:
         await asyncio.sleep(wait_until_start)
 
-    # แจ้งว่าเริ่มกิจกรรมแล้ว
     embed = event['embed']
     embed.title = f"🟢 {event['operation']} (อยู่ในระหว่างกำลังดำเนินการ)"
     await event['message'].edit(embed=embed, view=None)
-
-    # ส่ง DM แจ้งว่าเริ่มกิจกรรมแล้ว
+#=============================================================================================
+# ส่ง DM เฉพาะผู้ที่กดปุ่ม "รับการแจ้งเตือน "ส่ง DM แจ้งว่าเริ่มกิจกรรมแล้ว
     for user_id in event['view'].notified_users:  # ส่ง DM เฉพาะผู้ที่กดปุ่ม "รับการแจ้งเตือน"
         try:
             user = await bot.fetch_user(user_id)
             embed = discord.Embed(
-                title="� กิจกรรมเริ่มต้นแล้ว!",
+                title="🔔 กิจกรรมเริ่มต้นแล้ว!",
                 description=(
                     f"**{event['operation']}** ได้เริ่มต้นขึ้นแล้ว!\n"
                     "ขอให้ผู้เล่นเข้าเซิร์ฟเวอร์โดยด่วน!!!\n\n"
@@ -222,72 +249,51 @@ async def event_timer(event_id):
         except Exception as e:
             print(f"[ERROR] Failed to DM user {user_id}: {e}")
 
-
-    now = datetime.now(bangkok_tz)
-    wait_until_start = (event['start_time'] - now).total_seconds()
-    if wait_until_start > 0:
-        await asyncio.sleep(wait_until_start)
-
-    embed = event['embed']
-    embed.title = f"🟢 {event['operation']} (อยู่ในระหว่างกำลังดำเนินการ)"
-    await event['message'].edit(embed=embed, view=None)
-
-    # ส่ง DM แจ้งว่าเริ่มกิจกรรมแล้ว
-    for user_mention in event['joined'] + event['maybe']:  # รวมผู้ที่ตอบว่าเข้าร่วมและอาจจะเข้าร่วม
-        try:
-            user_id = int(user_mention.replace("<@!", "").replace("<@", "").replace(">", ""))
-            user = await bot.fetch_user(user_id)
-            
-            # สร้าง Embed สำหรับแจ้งเตือน
-            embed = discord.Embed(
-                title="🟢 กิจกรรมเริ่มต้นแล้ว!",
-                description=(
-                    f"**{event['operation']}** ได้เริ่มต้นขึ้นแล้ว!\n"
-                    "ขอให้ผู้เล่นเข้าเซิร์ฟเวอร์โดยด่วน!!!"
-                ),
-                color=discord.Color.green()
-            )
-            embed.set_footer(
-                text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
-                icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
-            )
-            await user.send(embed=embed)
-        except Exception as e:
-            print(f"[ERROR] Failed to DM user {user_mention}: {e}")
-            try:
-                # ส่งข้อความแจ้งเตือนใน Thread
-                embed = discord.Embed(
-                    title="🟢 กิจกรรมเริ่มต้นแล้ว!",
-                    description=(
-                        f"{user_mention} **{event['operation']}** ได้เริ่มต้นขึ้นแล้ว!\n"
-                        "ขอให้ผู้เล่นเข้าเซิร์ฟเวอร์โดยด่วน!!!"
-                    ),
-                    color=discord.Color.green()
-                )
-                await event['thread'].send(embed=embed)
-            except Exception as thread_error:
-                print(f"[ERROR] Failed to send to thread for {user_mention}: {thread_error}")
-
+    # แจ้งใน Thread ว่ากิจกรรมเริ่มต้นแล้ว
+    try:
+        embed_start = discord.Embed(
+            title="🟢 กิจกรรมเริ่มต้นแล้ว!",
+            description=(
+                f"**{event['operation']}** ได้เริ่มต้นขึ้นแล้ว!\n"
+                "ขอให้ผู้เล่นเข้าเซิร์ฟเวอร์โดยด่วน!!!\n\n"
+                "หากคุณมีคำถามหรือปัญหาใด ๆ โปรดแจ้งให้ทีมงานทราบ"
+            ),
+            color=discord.Color.green()
+        )
+        embed_start.set_footer(
+            text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
+            icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
+        )
+    
+        # ส่ง Embed ไปยัง Thread
+        await event['thread'].send(embed=embed_start)
+        print(f"[INFO] Sent event start notification to thread for event {event['operation']}")
+    except Exception as e:
+        print(f"[ERROR] Failed to send event start notification to thread: {e}")
+#=============================================================================================
     # รอ 3 ชั่วโมง 30 นาที แล้วอัปเดตสถานะเป็นจบ
     await asyncio.sleep(3.5 * 3600)
-    
+
     # อัปเดตสถานะกิจกรรมเป็นจบ
+    embed = event['embed']
     embed.title = f"⚫ {event['operation']} (กิจกรรมได้จบลงแล้ว)"
-    await event['message'].edit(embed=embed)
-    
-    # ส่ง DM ขอบคุณผู้เข้าร่วม
-    for user_mention in event['joined']:
+    try:
+        await event['message'].edit(embed=embed, view=None)
+    except Exception as e:
+        print(f"[ERROR] Failed to update event status to finished: {e}")
+
+#=============================================================================================
+    # ส่งข้อความขอบคุณใน Thread ของกิจกรรม
+    async def send_thank_you_message(event):
         try:
-            user_id = int(user_mention.replace("<@!", "").replace("<@", "").replace(">", ""))
-            user = await bot.fetch_user(user_id)
-            
-            # สร้าง Embed สำหรับขอบคุณ
+            # สร้าง Embed สำหรับข้อความขอบคุณ
             embed = discord.Embed(
                 title="⚫ กิจกรรมสิ้นสุดแล้ว",
                 description=(
-                    f"**{event['operation']}** ได้จบลงแล้ว\n"
+                    f"**{event['operation']}** ได้จบลงแล้ว!\n\n"
                     "ขอบคุณสำหรับการเข้าร่วมกิจกรรม!\n"
-                    "หากมีข้อเสนอแนะหรือคำติชม โปรดแจ้งให้เราทราบเพื่อปรับปรุงในอนาคต 😊"
+                    "หากมีข้อเสนอแนะหรือคำติชม โปรดแจ้งให้เราทราบเพื่อปรับปรุงในอนาคต 😊\n\n"
+                    "เราหวังว่าจะได้พบคุณในกิจกรรมครั้งถัดไป!"
                 ),
                 color=discord.Color.dark_gray()
             )
@@ -295,16 +301,18 @@ async def event_timer(event_id):
                 text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
                 icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
             )
-            await user.send(embed=embed)
+    
+            # ส่ง Embed ไปยัง Thread
+            await event['thread'].send(embed=embed)
+            logging.info(f"✅ ส่งข้อความขอบคุณใน Thread สำเร็จ")
         except Exception as e:
-            print(f"[ERROR] Failed to DM user {user_mention}: {e}")
+            logging.error(f"❌ เกิดข้อผิดพลาดในการส่งข้อความใน Thread: {e}")
 
-
-
-
+#=============================================================================================
+# ฟังก์ชันสำหรับการยืนยันการส่งข้อความ 
 class ConfirmationView(View):
     def __init__(self):
-        super().__init__(timeout=60)  # ตั้งเวลาหมดอายุ 60 วินาที
+        super().__init__(timeout=120)  # ตั้งเวลาหมดอายุ 120 วินาที
         self.value = None
 
     @discord.ui.button(label="ยืนยัน", style=discord.ButtonStyle.success)
@@ -318,7 +326,8 @@ class ConfirmationView(View):
         self.value = False
         await interaction.response.defer()
         self.stop()
-
+#=============================================================================================
+#⚠️ /event สร้างกิจกรรมพร้อมปุ่มตอบรับ
 @tree.command(name="event", description="สร้างกิจกรรมพร้อมปุ่มตอบรับ")
 @app_commands.describe(
     channel="เลือกห้องที่จะโพสต์กิจกรรม",
@@ -357,8 +366,8 @@ async def create_event(interaction: discord.Interaction,
 
     timestamp = int(dt.timestamp())
     counts_text = f"✅เข้าร่วม 0 คน | ❌ไม่เข้าร่วม 0 คน | ❓อาจจะเข้าร่วม 0 คน"
-
-    # สร้าง Embed ตัวอย่าง
+#=============================================================================================
+# สร้าง Embed ตัวอย่าง
     embed = discord.Embed(
         title=f"📌 {operation}",
         description=(
@@ -380,7 +389,7 @@ async def create_event(interaction: discord.Interaction,
         text=f"69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
         icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
     )
-
+#=============================================================================================
     # แยก Mod Links
     mod_links = [link.strip() for link in addmod.split(",")] if addmod else []
 
