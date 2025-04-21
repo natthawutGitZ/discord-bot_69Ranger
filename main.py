@@ -293,6 +293,7 @@ class ConfirmationView(View):
             await interaction.followup.send("❌ การยืนยันถูกยกเลิก", ephemeral=True)
 
 
+# ⚠️ /Event สร้างกิจกรรมพร้อมปุ่มตอบรับ
 @tree.command(name="event", description="สร้างกิจกรรมพร้อมปุ่มตอบรับ")
 @app_commands.describe(
     channel="เลือกห้องที่จะโพสต์กิจกรรม",
@@ -307,9 +308,6 @@ class ConfirmationView(View):
     add_mod="ลิงก์ Mod เพิ่มเติม (ใส่หลายลิงก์คั่นด้วยเครื่องหมายจุลภาค ',')(ถ้ามี)",
     image_url="URL ของรูปภาพกิจกรรม (ถ้ามี)"
 )
-
-
-# ฟังก์ชันสร้างกิจกรรม
 async def create_event(interaction: discord.Interaction, 
     channel: discord.TextChannel, 
     datetime_input: str,
@@ -367,7 +365,7 @@ async def create_event(interaction: discord.Interaction,
 
     # เพิ่มเนื้อเรื่องรอง (ถ้ามี)
     if story_secondary:
-        embed.add_field(name="📖 Story รอง", value=story_secondary, inline=False)
+        embed.add_field(name="", value=story_secondary, inline=False)
 
     embed.add_field(name="จำนวนผู้ตอบรับ", value=counts_text, inline=False)
 
@@ -379,27 +377,26 @@ async def create_event(interaction: discord.Interaction,
         icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
     )
 
-    # สร้าง View พร้อมส่ง mod_links
-    mod_links = [link.strip() for link in add_mod.split(",")] if add_mod else []
-    view = EventViewWithMod(mod_links)
+    # สร้าง View สำหรับการยืนยัน
+    view = ConfirmationView()
 
-    # แสดง Embed ตัวอย่างพร้อมปุ่มยืนยัน
-    try:
-        await interaction.response.send_message("⚠️ คุณต้องการส่งข้อความนี้หรือไม่?", embed=embed, view=view, ephemeral=True)
-    except discord.errors.NotFound:
-        await interaction.followup.send("❌ การโต้ตอบหมดอายุแล้ว กรุณาลองใหม่อีกครั้ง", ephemeral=True)
-        return
-    
+    # ส่งข้อความพร้อมปุ่มยืนยัน
+    await interaction.response.send_message(
+        "⚠️ คุณต้องการส่งข้อความนี้หรือไม่?", 
+        embed=embed, 
+        view=view, 
+        ephemeral=True
+    )
+
     # รอการตอบสนองจากผู้ใช้
     await view.wait()
-    
+
     if view.value is None:
         await interaction.followup.send("⏰ หมดเวลาการยืนยัน", ephemeral=True)
         return
     elif view.value:
         # ส่งข้อความไปยังช่องที่กำหนด
-        msg = await channel.send(embed=embed, view=view)
-    
+        msg = await channel.send(embed=embed)
         thread = await msg.create_thread(name=operation)
         event_id = str(uuid.uuid4())
         events[event_id] = {
@@ -409,7 +406,7 @@ async def create_event(interaction: discord.Interaction,
             'roles': roles,
             'story': story,
             'story_secondary': story_secondary,
-            'add_mod': mod_links,
+            'add_mod': add_mod.split(",") if add_mod else [],
             'joined': [],
             'declined': [],
             'maybe': [],
@@ -426,7 +423,6 @@ async def create_event(interaction: discord.Interaction,
         await interaction.followup.send("✅ ข้อความถูกส่งเรียบร้อยแล้ว!", ephemeral=True)
     else:
         await interaction.followup.send("❌ การส่งข้อความถูกยกเลิก", ephemeral=True)
-
     # DM ไปยัง Role ที่ถูกแท็กใน tags
     if tags:
         # แยกค่า tags ออกเป็นรายการ
