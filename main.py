@@ -175,8 +175,10 @@ async def event_timer(event_id):
                 await user.send(embed=embed)
             except Exception as e:
                 print(f"[ERROR] DM failed for {user_mention}: {e}")
-                # ไม่ส่งข้อความใน Thread หาก DM ล้มเหลว
                 continue
+
+    # เรียกใช้งานฟังก์ชันอัปเดตเวลานับถอยหลัง
+    await update_countdown(event_id)
 
     now = datetime.now(bangkok_tz)
     wait_until_end = (event['end_time'] - now).total_seconds()
@@ -187,6 +189,24 @@ async def event_timer(event_id):
     embed = event['embed']
     embed.title = f"⚫ {event['operation']} (กิจกรรมได้จบลงแล้ว)"
     await event['message'].edit(embed=embed, view=None)
+
+# ฟังก์ชันอัปเดตเวลานับถอยหลังใน Embed
+async def update_countdown(event_id):
+    event = events[event_id]
+    while True:
+        now = datetime.now(bangkok_tz)
+        time_left = event['start_time'] - now
+
+        if time_left.total_seconds() <= 0:
+            break  # หยุดการอัปเดตเมื่อถึงเวลาเริ่มกิจกรรม
+
+        # อัปเดต Embed
+        embed = event['embed']
+        embed.title = f"📌 {event['operation']} (เริ่มในอีก {time_left})"
+        await event['message'].edit(embed=embed)
+
+        await asyncio.sleep(1)  # อัปเดตทุก ๆ 1 วินาที
+
 
     # ส่ง DM แจ้งว่าเริ่มกิจกรรมแล้ว
     for user_mention in event['joined'] + event['maybe']:  # รวมผู้ที่ตอบว่าเข้าร่วมและอาจจะเข้าร่วม
