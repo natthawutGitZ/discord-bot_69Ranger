@@ -69,6 +69,7 @@ class EventView(View):
         else:
             embed.add_field(name="จำนวนผู้ตอบรับ", value=counts, inline=False)
         await self.message.edit(embed=embed, view=self)
+        await update_summary_embed(event)
 
     async def handle_response(self, interaction, status):
         user = interaction.user.mention
