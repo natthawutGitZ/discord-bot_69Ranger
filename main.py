@@ -52,12 +52,18 @@ thai_months = ["มกราคม", "กุมภาพันธ์", "มี�
 bangkok_tz = pytz.timezone("Asia/Bangkok")
 events = {}
 
-class InitialConfirmView (View):
-    def __init__(self, message, event_id, mod_links):
-        super().__init__(timeout=None)
-        self.message = message
-        self.event_id = event_id
+
+class InitialConfirmView(discord.ui.View):
+    def __init__(self, mod_links, embed, channel, operation, start_timestamp, end_timestamp, event_id, events_dict):
+        super().__init__()
         self.mod_links = mod_links
+        self.embed = embed
+        self.channel = channel
+        self.operation = operation
+        self.start_timestamp = start_timestamp
+        self.end_timestamp = end_timestamp
+        self.event_id = event_id
+        self.events_dict = events_dict
 
     async def update_counts(self):
         event = events[self.event_id]
@@ -68,8 +74,8 @@ class InitialConfirmView (View):
             embed.set_field_at(0, name="จำนวนผู้ตอบรับ", value=counts, inline=False)
         else:
             embed.add_field(name="จำนวนผู้ตอบรับ", value=counts, inline=False)
-        await self.message.edit(embed=embed, view=self)
-        await update_summary_embed(event)
+            await self.message.edit(embed=embed, view=self)
+            await update_summary_embed(event)
 
     async def handle_response(self, interaction, status):
         user = interaction.user.mention
@@ -88,19 +94,6 @@ class InitialConfirmView (View):
 
         await interaction.response.defer()
         await self.update_counts()
-
-class InitialConfirmView(discord.ui.View):
-    def __init__(self, mod_links, embed, channel, operation, start_timestamp, end_timestamp, event_id, events_dict):
-        super().__init__()
-        self.mod_links = mod_links
-        self.embed = embed
-        self.channel = channel
-        self.operation = operation
-        self.start_timestamp = start_timestamp
-        self.end_timestamp = end_timestamp
-        self.event_id = event_id
-        self.events_dict = events_dict
-
 
 @discord.ui.button(label="✅ ยืนยันการส่ง", style=discord.ButtonStyle.success)
 async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
