@@ -225,24 +225,10 @@ async def event_timer(event_id):
         except Exception as e:
             print(f"[ERROR] Failed to DM user {user_mention}: {e}")
 
-
 class EventViewWithMod(View):
     def __init__(self, mod_links):
         super().__init__(timeout=None)
         self.mod_links = mod_links
-        self.value = None
-
-    @discord.ui.button(label="เข้าร่วม", style=discord.ButtonStyle.success, emoji="✅")
-    async def join(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_message("คุณเลือกที่จะเข้าร่วมกิจกรรม!", ephemeral=True)
-
-    @discord.ui.button(label="ไม่เข้าร่วม", style=discord.ButtonStyle.danger, emoji="❌")
-    async def decline(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_message("คุณเลือกที่จะไม่เข้าร่วมกิจกรรม!", ephemeral=True)
-
-    @discord.ui.button(label="อาจจะมา", style=discord.ButtonStyle.secondary, emoji="❓")
-    async def maybe(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_message("คุณเลือกที่จะอาจจะเข้าร่วมกิจกรรม!", ephemeral=True)
 
     @discord.ui.button(label="Mod เพิ่มเติม", style=discord.ButtonStyle.primary, emoji="🔗")
     async def view_mod(self, interaction: discord.Interaction, button: Button):
@@ -265,20 +251,47 @@ class EventViewWithMod(View):
 
 class ConfirmationView(View):
     def __init__(self):
-        super().__init__(timeout=60)  # ตั้งเวลาหมดอายุ 60 วินาที
+        super().__init__(timeout=120)  # ตั้งเวลาหมดอายุ 120 วินาที
         self.value = None
+
+    async def on_timeout(self):
+        for child in self.children:
+            child.disabled = True  # ปิดใช้งานปุ่มทั้งหมด
+        await self.message.edit(view=self)  # อัปเดต View เพื่อแสดงปุ่มที่ปิดใช้งาน
 
     @discord.ui.button(label="ยืนยัน", style=discord.ButtonStyle.success)
     async def confirm(self, interaction: discord.Interaction, button: Button):
         self.value = True
-        await interaction.response.defer()
+        await interaction.response.send_message("✅ คุณได้ยืนยันแล้ว!", ephemeral=True)
         self.stop()
-
+    
     @discord.ui.button(label="ยกเลิก", style=discord.ButtonStyle.danger)
     async def cancel(self, interaction: discord.Interaction, button: Button):
         self.value = False
-        await interaction.response.defer()
+        await interaction.response.send_message("❌ คุณได้ยกเลิกแล้ว!", ephemeral=True)
         self.stop()
+
+
+        view = ConfirmationView()
+        await interaction.response.send_message(
+            "⚠️ คุณต้องการส่งข้อความนี้หรือไม่?", 
+            embed=embed, 
+            view=view, 
+            ephemeral=True
+        )
+
+        # รอการตอบสนองจากผู้ใช้
+        await view.wait()
+
+        if view.value is None:
+            await interaction.followup.send("⏰ หมดเวลาการยืนยัน", ephemeral=True)
+            return
+        elif view.value:
+            # ดำเนินการสร้างกิจกรรม
+            await interaction.followup.send("✅ การยืนยันสำเร็จ! กำลังสร้างกิจกรรม...", ephemeral=True)
+        else:
+            await interaction.followup.send("❌ การยืนยันถูกยกเลิก", ephemeral=True)
+
 
 @tree.command(name="event", description="สร้างกิจกรรมพร้อมปุ่มตอบรับ")
 @app_commands.describe(
@@ -296,6 +309,7 @@ class ConfirmationView(View):
 )
 
 
+# ฟังก์ชันสร้างกิจกรรม
 async def create_event(interaction: discord.Interaction, 
     channel: discord.TextChannel, 
     datetime_input: str,
@@ -309,10 +323,8 @@ async def create_event(interaction: discord.Interaction,
     add_mod: Optional[str] = None,
     image_url: Optional[str] = None):
 
-   
-
     try:
-        # ลบช่องว่างเกินและใช้ regex เพื่อจับรูปแบบวันเวลา
+        # แปลงวันที่และเวลา
         match = re.match(r"\s*(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})\s*", datetime_input)
         if not match:
             raise ValueError("รูปแบบไม่ตรง")
@@ -335,12 +347,11 @@ async def create_event(interaction: discord.Interaction,
         )
         return
 
-
     start_timestamp = int(start_dt.timestamp())
     end_timestamp = int(end_dt.timestamp())
     counts_text = f"✅เข้าร่วม 0 คน | ❌ไม่เข้าร่วม 0 คน | ❓อาจจะเข้าร่วม 0 คน"
 
-    # สร้าง Embed ตัวอย่าง
+    # สร้าง Embed หลัก
     embed = discord.Embed(
         title=f"📌 {operation}",
         description=(
@@ -348,24 +359,15 @@ async def create_event(interaction: discord.Interaction,
             f"**Editor:** {editor}\n"
             f"**Preset:** {preset}\n"
             f"**Tags:** {tags}\n"
-             f"**Roles:** {roles}\n\n"
-            f"📖 **Story:**\n{story}\n\n"  
-           
+            f"**Roles:** {roles}\n\n"
+            f"📖 **Story:**\n{story}\n\n"
         ),
         color=discord.Color.red()
     )
 
-
     # เพิ่มเนื้อเรื่องรอง (ถ้ามี)
     if story_secondary:
-        embed.add_field(name="", value=story_secondary, inline=False)
-
-    # # เพิ่มลิงก์ Mod (ถ้ามี)
-    # mod_links = []
-    # if add_mod:
-    #     mod_links = [link.strip() for link in add_mod.split(",")]
-    #     for i, link in enumerate(mod_links, start=1):
-    #         embed.add_field(name=f"🔗 Mod เพิ่มเติม #{i}", value=f"[คลิกเพื่อดูข้อมูลเพิ่มเติม]({link})", inline=False)
+        embed.add_field(name="📖 Story รอง", value=story_secondary, inline=False)
 
     embed.add_field(name="จำนวนผู้ตอบรับ", value=counts_text, inline=False)
 
@@ -377,8 +379,11 @@ async def create_event(interaction: discord.Interaction,
         icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
     )
 
-    # แสดง Embed ตัวอย่างพร้อมปุ่มยืนยัน
+    # สร้าง View พร้อมส่ง mod_links
+    mod_links = [link.strip() for link in add_mod.split(",")] if add_mod else []
     view = EventViewWithMod(mod_links)
+
+    # แสดง Embed ตัวอย่างพร้อมปุ่มยืนยัน
     try:
         await interaction.response.send_message("⚠️ คุณต้องการส่งข้อความนี้หรือไม่?", embed=embed, view=view, ephemeral=True)
     except discord.errors.NotFound:
