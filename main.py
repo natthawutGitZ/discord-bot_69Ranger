@@ -226,40 +226,6 @@ async def event_timer(event_id):
             print(f"[ERROR] Failed to DM user {user_mention}: {e}")
 
 
-from discord.ui import View, Button
-
-class ConfirmationView(View):
-    def __init__(self):
-        super().__init__(timeout=60)  # ตั้งเวลาหมดอายุ 60 วินาที
-        self.value = None
-
-    @discord.ui.button(label="ยืนยัน", style=discord.ButtonStyle.success)
-    async def confirm(self, interaction: discord.Interaction, button: Button):
-        self.value = True
-        await interaction.response.defer()
-        self.stop()
-
-    @discord.ui.button(label="ยกเลิก", style=discord.ButtonStyle.danger)
-    async def cancel(self, interaction: discord.Interaction, button: Button):
-        self.value = False
-        await interaction.response.defer()
-        self.stop()
-
-@tree.command(name="event", description="สร้างกิจกรรมพร้อมปุ่มตอบรับ")
-@app_commands.describe(
-    channel="เลือกห้องที่จะโพสต์กิจกรรม",
-    datetime_input="วันและเวลาของกิจกรรม (เช่น 01-01-2568 20:30-22:30)",
-    operation="ชื่อ Operation (เช่น The Darknight Ep.4)",
-    editor="ชื่อผู้แก้ไข (เช่น @Silver BlackWell)",
-    preset="Mod ที่ใช้งาน (เช่น69Ranger RE Preset Edit V5)",
-    tags="แท็กผู้เข้าร่วม เลือก Role ที่ต้องการแท็ก (ห้าม @everyone หรือ @here)",
-    roles="บทบาทที่ได้เล่น (เช่น 75th Ranger Regiment)",
-    story="เนื้อเรื่องของกิจกรรม (เช่น เรื่องราวที่เกี่ยวข้องกับกิจกรรม)",
-    story_secondary="เนื้อเรื่องรองของกิจกรรม (ถ้ามี)",
-    add_mod="ลิงก์ Mod เพิ่มเติม (ใส่หลายลิงก์คั่นด้วยเครื่องหมายจุลภาค ',')(ถ้ามี)",
-    image_url="URL ของรูปภาพกิจกรรม (ถ้ามี)"
-)
-
 class EventViewWithMod(View):
     def __init__(self, mod_links):
         super().__init__(timeout=None)
@@ -297,6 +263,37 @@ class EventViewWithMod(View):
         else:
             await interaction.response.send_message("ไม่มี Mod เพิ่มเติมสำหรับกิจกรรมนี้", ephemeral=True)
 
+class ConfirmationView(View):
+    def __init__(self):
+        super().__init__(timeout=60)  # ตั้งเวลาหมดอายุ 60 วินาที
+        self.value = None
+
+    @discord.ui.button(label="ยืนยัน", style=discord.ButtonStyle.success)
+    async def confirm(self, interaction: discord.Interaction, button: Button):
+        self.value = True
+        await interaction.response.defer()
+        self.stop()
+
+    @discord.ui.button(label="ยกเลิก", style=discord.ButtonStyle.danger)
+    async def cancel(self, interaction: discord.Interaction, button: Button):
+        self.value = False
+        await interaction.response.defer()
+        self.stop()
+
+@tree.command(name="event", description="สร้างกิจกรรมพร้อมปุ่มตอบรับ")
+@app_commands.describe(
+    channel="เลือกห้องที่จะโพสต์กิจกรรม",
+    datetime_input="วันและเวลาของกิจกรรม (เช่น 01-01-2568 20:30-22:30)",
+    operation="ชื่อ Operation (เช่น The Darknight Ep.4)",
+    editor="ชื่อผู้แก้ไข (เช่น @Silver BlackWell)",
+    preset="Mod ที่ใช้งาน (เช่น69Ranger RE Preset Edit V5)",
+    tags="แท็กผู้เข้าร่วม เลือก Role ที่ต้องการแท็ก (ห้าม @everyone หรือ @here)",
+    roles="บทบาทที่ได้เล่น (เช่น 75th Ranger Regiment)",
+    story="เนื้อเรื่องของกิจกรรม (เช่น เรื่องราวที่เกี่ยวข้องกับกิจกรรม)",
+    story_secondary="เนื้อเรื่องรองของกิจกรรม (ถ้ามี)",
+    add_mod="ลิงก์ Mod เพิ่มเติม (ใส่หลายลิงก์คั่นด้วยเครื่องหมายจุลภาค ',')(ถ้ามี)",
+    image_url="URL ของรูปภาพกิจกรรม (ถ้ามี)"
+)
 
 
 async def create_event(interaction: discord.Interaction, 
