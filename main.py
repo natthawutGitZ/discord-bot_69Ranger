@@ -201,12 +201,15 @@ async def update_countdown(event_id):
             break  # หยุดการอัปเดตเมื่อถึงเวลาเริ่มกิจกรรม
 
         # อัปเดต Embed
+        time_left_str = f"{time_left.days} วัน {time_left.seconds // 3600} ชั่วโมง {(time_left.seconds % 3600) // 60} นาที"
         embed = event['embed']
-        embed.title = f"📌 {event['operation']} (เริ่มในอีก {time_left})"
-        await event['message'].edit(embed=embed)
+        embed.title = f"📌 {event['operation']} (เริ่มในอีก {time_left_str})"
+        try:
+            await event['message'].edit(embed=embed)
+        except Exception as e:
+            logging.error(f"❌ ไม่สามารถอัปเดต Embed ได้: {e}")
 
-        await asyncio.sleep(1)  # อัปเดตทุก ๆ 1 วินาที
-
+        await asyncio.sleep(60)  # อัปเดตทุก ๆ 1 นาที
 
     # ส่ง DM แจ้งว่าเริ่มกิจกรรมแล้ว
     for user_mention in event['joined'] + event['maybe']:  # รวมผู้ที่ตอบว่าเข้าร่วมและอาจจะเข้าร่วม
