@@ -230,7 +230,7 @@ class EventViewWithMod(View):
         super().__init__(timeout=None)
         self.mod_links = mod_links
 
-    @discord.ui.button(label="Mod เพิ่มเติม", style=discord.ButtonStyle.primary, emoji="🔗")
+    @discord.ui.button(label="🔗Mod เพิ่มเติม", style=discord.ButtonStyle.primary, emoji="🔗")
     async def view_mod(self, interaction: discord.Interaction, button: Button):
         if self.mod_links:
             embed = discord.Embed(
@@ -347,56 +347,61 @@ async def create_event(interaction: discord.Interaction,
 
     start_timestamp = int(start_dt.timestamp())
     end_timestamp = int(end_dt.timestamp())
-    counts_text = f"✅เข้าร่วม 0 คน | ❌ไม่เข้าร่วม 0 คน | ❓อาจจะเข้าร่วม 0 คน"
+
 
     # สร้าง Embed หลัก
     embed = discord.Embed(
         title=f"📌 {operation}",
         description=(
-            f"<t:{start_timestamp}:F> | <t:{start_timestamp}:R>\n"
+            f"🗓️ วันที่: <t:{start_timestamp}:D>\n"
+            f"🕒 เวลา: <t:{start_timestamp}:t> - <t:{end_timestamp}:t>\n\n"
             f"**Editor:** {editor}\n"
             f"**Preset:** {preset}\n"
             f"**Tags:** {tags}\n"
             f"**Roles:** {roles}\n\n"
-            f"📖 **Story:**\n{story}\n\n"
+            f"📖 **Story:**\n{story}\n"
         ),
         color=discord.Color.red()
     )
-
+    
     # เพิ่มเนื้อเรื่องรอง (ถ้ามี)
     if story_secondary:
-        embed.add_field(name="", value=story_secondary, inline=False)
-
+        embed.add_field(name="\u200b", value=story_secondary, inline=False)
+    
+    # เพิ่มจำนวนผู้ตอบรับ
+    counts_text = f"✅เข้าร่วม 0 คน | ❌ไม่เข้าร่วม 0 คน | ❓อาจจะเข้าร่วม 0 คน"
     embed.add_field(name="จำนวนผู้ตอบรับ", value=counts_text, inline=False)
-
+    
+    # เพิ่มรูปภาพ (ถ้ามี)
     if image_url:
         embed.set_image(url=image_url)
-
+    
     embed.set_footer(
         text=f"69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
         icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
     )
-
-    # สร้าง View สำหรับการยืนยัน
-    view = ConfirmationView()
-
-    # ส่งข้อความพร้อมปุ่มยืนยัน
+    
+    # สร้าง View พร้อมส่ง mod_links
+    mod_links = [link.strip() for link in add_mod.split(",")] if add_mod else []
+    view = EventViewWithMod(mod_links)
+    
+    # ส่งข้อความพร้อมปุ่ม
     await interaction.response.send_message(
         "⚠️ คุณต้องการส่งข้อความนี้หรือไม่?", 
         embed=embed, 
         view=view, 
         ephemeral=True
     )
-
+    
     # รอการตอบสนองจากผู้ใช้
     await view.wait()
-
+    
     if view.value is None:
         await interaction.followup.send("⏰ หมดเวลาการยืนยัน", ephemeral=True)
         return
     elif view.value:
         # ส่งข้อความไปยังช่องที่กำหนด
-        msg = await channel.send(embed=embed)
+        msg = await channel.send(embed=embed, view=EventViewWithMod(mod_links))
         thread = await msg.create_thread(name=operation)
         event_id = str(uuid.uuid4())
         events[event_id] = {
@@ -406,7 +411,7 @@ async def create_event(interaction: discord.Interaction,
             'roles': roles,
             'story': story,
             'story_secondary': story_secondary,
-            'add_mod': add_mod.split(",") if add_mod else [],
+            'add_mod': mod_links,
             'joined': [],
             'declined': [],
             'maybe': [],
@@ -417,12 +422,10 @@ async def create_event(interaction: discord.Interaction,
             'thread': thread,
             'message': msg
         }
-        view = EventView(msg, event_id)
-        await msg.edit(embed=embed, view=view)
-        bot.loop.create_task(event_timer(event_id))
         await interaction.followup.send("✅ ข้อความถูกส่งเรียบร้อยแล้ว!", ephemeral=True)
     else:
         await interaction.followup.send("❌ การส่งข้อความถูกยกเลิก", ephemeral=True)
+
     # DM ไปยัง Role ที่ถูกแท็กใน tags
     if tags:
         # แยกค่า tags ออกเป็นรายการ
@@ -440,33 +443,18 @@ async def create_event(interaction: discord.Interaction,
                         if member.bot or member.id in sent_users:
                             continue  # ข้ามผู้ใช้ที่เป็นบอทหรือส่งข้อความไปแล้ว
                         try:
-                            # สร้าง Embed ตัวอย่าง
+                            # สร้าง Embed สำหรับแจ้งเตือน
                             embed = discord.Embed(
-                                title=f"📌 {operation}",
+                                title="📢 มีกิจกรรมใหม่!",
                                 description=(
-                                    f"🗓️วันที่: <t:{start_timestamp}:D>\n"
-                                    f"🕒 เวลา: <t:{start_timestamp}:t> - <t:{end_timestamp}:t>\n\n"
-                                    f"**Editor:** {editor}\n"
-                                    f"**Preset:** {preset}\n"
-                                    f"**Tags:** {tags}\n\n"
-                                    f"📖 **Story:**\n{story}\n\n"
-
-                                ),
-                                color=discord.Color.red()
+                                    f"**ชื่อกิจกรรม:** {operation}\n"
+                                    f"📅 **วันที่:** <t:{start_timestamp}:D>\n"
+                                    f"⏰ **เวลา:** <t:{start_timestamp}:t>\n\n"
+                                    "หากสนใจเข้าร่วมกิจกรรม สามารถตอบรับได้ที่โพสต์นี้\n"
+                                    f"[🔗ดูรายละเอียดกิจกรรม]({msg_link})"
+                                ), 
+                                color=discord.Color.blue()
                             )
-                            
-                            # เพิ่มเนื้อเรื่องรอง (ถ้ามี)
-                            if story_secondary:
-                                embed.add_field(name="", value=story_secondary, inline=False)
-                            
-                            # เพิ่มบทบาท (Roles)
-                            embed.add_field(name=" Roles", value=roles, inline=False)
-                            
-                            # เพิ่มรูปภาพ (ถ้ามี)
-                            if image_url:
-                                embed.set_image(url=image_url)
-                            
-                            # เพิ่ม Footer
                             embed.set_footer(
                                 text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
                                 icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
@@ -475,6 +463,9 @@ async def create_event(interaction: discord.Interaction,
                             sent_users.add(member.id)  # เพิ่ม user_id ลงใน set
                         except Exception as e:
                             logging.warning(f"❌ ไม่สามารถส่งข้อความให้ {member.name}: {e}")
+                            
+                            
+                
 #=============================================================================================
 #⚠️ /Help แสดงคำสั่งทั้งหมดของบอท
 @bot.tree.command(name="help", description="แสดงคำสั่งทั้งหมดของบอท")
