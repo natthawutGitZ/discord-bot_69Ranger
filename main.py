@@ -52,14 +52,15 @@ bangkok_tz = pytz.timezone("Asia/Bangkok")
 events = {}
 
 class EventView(View):
-    def __init__(self, message, event_id):
+    def __init__(self, message, event_id, mod_links):
         super().__init__(timeout=None)
         self.message = message
         self.event_id = event_id
+        self.mod_links = mod_links
 
     async def update_counts(self):
         event = events[self.event_id]
-        counts = f"✅ {len(event['joined'])} คน | ❌ {len(event['declined'])} คน | ❓ {len(event['maybe'])} คน"
+        counts = f"✅เข้าร่วม {len(event['joined'])} คน | ❌ไม่เข้าร่วม {len(event['declined'])} คน | ❓อาจจะเข้า {len(event['maybe'])} คน"
 
         embed = event['embed']
         if embed.fields:
@@ -67,7 +68,6 @@ class EventView(View):
         else:
             embed.add_field(name="จำนวนผู้ตอบรับ", value=counts, inline=False)
         await self.message.edit(embed=embed, view=self)
-        await update_summary_embed(event)
 
     async def handle_response(self, interaction, status):
         user = interaction.user.mention
@@ -98,6 +98,34 @@ class EventView(View):
     @discord.ui.button(label="อาจจะมา", style=discord.ButtonStyle.secondary, emoji="❓")
     async def maybe(self, interaction: discord.Interaction, button: Button):
         await self.handle_response(interaction, 'maybe')
+
+    @discord.ui.button(label="🔗Mod เพิ่มเติม", style=discord.ButtonStyle.primary, emoji="🔗")
+    async def view_mod(self, interaction: discord.Interaction, button: Button):
+        if self.mod_links:
+            embed = discord.Embed(
+                title="🔗 Mod เพิ่มเติม",
+                description="ลิงก์ Mod ที่เกี่ยวข้องกับกิจกรรมนี้:",
+                color=discord.Color.blue()
+            )
+            for i, link in enumerate(self.mod_links, start=1):
+                embed.add_field(name=f"Mod #{i}", value=f"[คลิกเพื่อดูข้อมูล]({link})", inline=False)
+
+            embed.set_footer(
+                text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
+                icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        else:
+            embed = discord.Embed(
+                title="🔗 Mod เพิ่มเติม",
+                description="❌ Preset-mod ไม่มีการเพิ่ม mod ใดๆ",
+                color=discord.Color.red()
+            )
+            embed.set_footer(
+                text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
+                icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
 
 async def update_summary_embed(event):
     joined = event.get('joined') or []
@@ -268,10 +296,11 @@ class ConfirmationView(View):
     datetime_input="วันและเวลาของกิจกรรม (เช่น 01-01-2568 20:30)",
     operation="ชื่อ Operation (เช่น The Darknight Ep.4)",
     editor="ชื่อผู้แก้ไข (เช่น @Silver BlackWell)",
-    preset="Mod ที่ใช้งาน (เช่น69Ranger RE Preset Edit V5) หากมี Mod เพิ่มให้แจ้งที่ช่องนี้ได้เลย ",
+    preset="Mod ที่ใช้งาน (เช่น69Ranger RE Preset Edit V5)",
     tags="แท็กผู้เข้าร่วม เลือก Role ที่ต้องการแท็ก (ห้าม @everyone หรือ @here)",
-    story="เนื้อเรื่องของกิจกรรม (เช่น เรื่องราวที่เกี่ยวข้องกับกิจกรรม)", 
-    roles="บทบาทที่ได้เล่น (เช่น 75th Ranger Regiment) หากต้องการนักบินให้แจ้งเพิ่มเติม | required Pilot 1-2   ",
+    roles="บทบาทที่ได้เล่น (เช่น 75th Ranger Regiment)",
+    story="เนื้อเรื่องของกิจกรรม (เช่น เรื่องราวที่เกี่ยวข้องกับกิจกรรม)",
+    addmod="ลิงก์ Mod เพิ่มเติม (ใส่หลายลิงก์คั่นด้วยเครื่องหมายจุลภาค ',')(ถ้ามี)",
     image_url="URL ของรูปภาพกิจกรรม (ถ้ามี)"
 )
 async def create_event(interaction: discord.Interaction, 
@@ -281,9 +310,10 @@ async def create_event(interaction: discord.Interaction,
     editor: str, 
     preset: str, 
     tags: str, 
-    story: str, 
     roles: str, 
-    image_url: str = None):
+    story: str, 
+    addmod: Optional[str] = None,
+    image_url: Optional[str] = None):
 
     try:
         day, month, year_time = datetime_input.split("-")
@@ -322,6 +352,9 @@ async def create_event(interaction: discord.Interaction,
         icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
     )
 
+    # แยก Mod Links
+    mod_links = [link.strip() for link in addmod.split(",")] if addmod else []
+
     # แสดง Embed ตัวอย่างพร้อมปุ่มยืนยัน
     view = ConfirmationView()
     try:
@@ -357,7 +390,7 @@ async def create_event(interaction: discord.Interaction,
             'thread': thread,
             'message': msg
         }
-        view = EventView(msg, event_id)
+        view = EventView(msg, event_id, mod_links)
         await msg.edit(embed=embed, view=view)
         bot.loop.create_task(event_timer(event_id))
         await interaction.followup.send("✅ ข้อความถูกส่งเรียบร้อยแล้ว!", ephemeral=True)
