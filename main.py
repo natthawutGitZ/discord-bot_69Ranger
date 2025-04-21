@@ -137,6 +137,30 @@ class EventView(View):
         else:
             await interaction.response.send_message("❌ คุณได้สมัครรับการแจ้งเตือนไปแล้ว!", ephemeral=True)
 
+async def update_summary_embed(event):
+    joined = event.get('joined') or []
+    declined = event.get('declined') or []
+    maybe = event.get('maybe') or []
+
+    joined_str = "\n".join(joined) if joined else "-"
+    declined_str = "\n".join(declined) if declined else "-"
+    maybe_str = "\n".join(maybe) if maybe else "-"
+
+    embed = discord.Embed(title="📋 สรุปการตอบรับ", color=discord.Color.blue())
+    embed.add_field(name="เข้าร่วม", value=joined_str, inline=True)
+    embed.add_field(name="ไม่เข้าร่วม", value=declined_str, inline=True)
+    embed.add_field(name="อาจจะเข้าร่วม", value=maybe_str, inline=True)
+
+    if 'thread_message' in event:
+        try:
+            await event['thread_message'].edit(embed=embed)
+        except:
+            pass
+    else:
+        thread_msg = await event['thread'].send(embed=embed)
+        event['thread_message'] = thread_msg
+
+
 async def event_timer(event_id):
     event = events[event_id]
     now = datetime.now(bangkok_tz)
