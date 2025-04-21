@@ -89,25 +89,51 @@ class EventView(View):
         await interaction.response.defer()
         await self.update_counts()
 
-class EventViewWithMod(View):
+class InitialConfirmView(discord.ui.View):
+    def __init__(self, mod_links, embed, channel, operation, start_timestamp, end_timestamp):
+        super().__init__()
+        self.mod_links = mod_links
+        self.embed = embed
+        self.channel = channel
+        self.operation = operation
+        self.start_timestamp = start_timestamp
+        self.end_timestamp = end_timestamp
+
+    @discord.ui.button(label="✅ ยืนยันการส่ง", style=discord.ButtonStyle.success)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        msg = await self.channel.send(embed=self.embed, view=EventParticipationView(self.mod_links))
+        await msg.create_thread(name=self.operation)
+        await interaction.response.edit_message(
+            content="✅ กิจกรรมถูกส่งแล้ว!",
+            view=None
+        )
+
+    @discord.ui.button(label="❌ ยกเลิก", style=discord.ButtonStyle.danger)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.edit_message(
+            content="🚫 ยกเลิกการสร้างกิจกรรมแล้ว",
+            view=None
+        )
+
+class EventParticipationView(discord.ui.View):
     def __init__(self, mod_links):
-        super().__init__(timeout=None)
+        super().__init__()
         self.mod_links = mod_links
 
-    @discord.ui.button(label="เข้าร่วม", style=discord.ButtonStyle.success, emoji="✅")
-    async def join(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_message("✅ คุณได้เข้าร่วมกิจกรรมแล้ว!", ephemeral=True)
+    @discord.ui.button(label="✅ เข้าร่วม", style=discord.ButtonStyle.success, custom_id="join")
+    async def join(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("คุณเข้าร่วมกิจกรรมแล้ว!", ephemeral=True)
 
-    @discord.ui.button(label="ไม่เข้าร่วม", style=discord.ButtonStyle.danger, emoji="❌")
-    async def decline(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_message("❌ คุณได้ปฏิเสธการเข้าร่วมกิจกรรม!", ephemeral=True)
+    @discord.ui.button(label="❌ ไม่เข้าร่วม", style=discord.ButtonStyle.danger, custom_id="decline")
+    async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("คุณเลือกที่จะไม่เข้าร่วมกิจกรรมนี้.", ephemeral=True)
 
-    @discord.ui.button(label="อาจจะมา", style=discord.ButtonStyle.secondary, emoji="❓")
-    async def maybe(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_message("❓ คุณอาจจะเข้าร่วมกิจกรรม!", ephemeral=True)
+    @discord.ui.button(label="❓ อาจจะมา", style=discord.ButtonStyle.secondary, custom_id="maybe")
+    async def maybe(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("คุณอาจจะมาร่วมกิจกรรมนี้.", ephemeral=True)
 
-    @discord.ui.button(label="🔗Mod เพิ่มเติม", style=discord.ButtonStyle.primary, emoji="🔗")
-    async def view_mod(self, interaction: discord.Interaction, button: Button):
+    @discord.ui.button(label="🔵 Mod เพิ่มเติม", style=discord.ButtonStyle.primary, custom_id="mod_info")
+    async def mod_info(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.mod_links:
             embed = discord.Embed(
                 title="🔗 Mod เพิ่มเติม",
