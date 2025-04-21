@@ -90,7 +90,7 @@ class InitialConfirmView (View):
         await self.update_counts()
 
 class InitialConfirmView(discord.ui.View):
-    def __init__(self, mod_links, embed, channel, operation, start_timestamp, end_timestamp):
+    def __init__(self, mod_links, embed, channel, operation, start_timestamp, end_timestamp, event_id, events_dict):
         super().__init__()
         self.mod_links = mod_links
         self.embed = embed
@@ -98,15 +98,35 @@ class InitialConfirmView(discord.ui.View):
         self.operation = operation
         self.start_timestamp = start_timestamp
         self.end_timestamp = end_timestamp
+        self.event_id = event_id
+        self.events_dict = events_dict
 
-    @discord.ui.button(label="✅ ยืนยันการส่ง", style=discord.ButtonStyle.success)
-    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
-        msg = await self.channel.send(embed=self.embed, view=EventParticipationView(self.mod_links))
-        await msg.create_thread(name=self.operation)
-        await interaction.response.edit_message(
-            content="✅ กิจกรรมถูกส่งแล้ว!",
-            view=None
-        )
+
+@discord.ui.button(label="✅ ยืนยันการส่ง", style=discord.ButtonStyle.success)
+async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+    msg = await self.channel.send(embed=self.embed, view=EventParticipationView(self.mod_links))
+    thread = await msg.create_thread(name=self.operation)
+
+    # บันทึกกิจกรรมเข้า events_dict
+    self.events_dict[self.event_id] = {
+        'operation': self.operation,
+        'add_mod': self.mod_links,
+        'joined': [],
+        'declined': [],
+        'maybe': [],
+        'embed': self.embed,
+        'timestamp': self.start_timestamp,
+        'start_time': self.start_timestamp,
+        'end_time': self.end_timestamp,
+        'thread': thread,
+        'message': msg
+    }
+
+    await interaction.response.edit_message(
+        content="✅ กิจกรรมถูกส่งแล้ว!",
+        view=None
+    )
+
 
     @discord.ui.button(label="❌ ยกเลิก", style=discord.ButtonStyle.danger)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
