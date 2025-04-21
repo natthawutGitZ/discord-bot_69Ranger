@@ -52,7 +52,7 @@ thai_months = ["มกราคม", "กุมภาพันธ์", "มี�
 bangkok_tz = pytz.timezone("Asia/Bangkok")
 events = {}
 
-class EventView(View):
+class InitialConfirmView (View):
     def __init__(self, message, event_id, mod_links):
         super().__init__(timeout=None)
         self.message = message
@@ -435,48 +435,57 @@ async def create_event(interaction: discord.Interaction,
     
     # สร้าง View พร้อมส่ง mod_links
     mod_links = [link.strip() for link in add_mod.split(",")] if add_mod else []
-    view = EventViewWithMod(mod_links)
-    
-    # ส่งข้อความพร้อมปุ่ม
+    event_id = str(uuid.uuid4())
+    view = InitialConfirmView(
+        mod_links=mod_links,
+        embed=embed,
+        channel=channel,
+        operation=operation,
+        start_timestamp=start_dt,
+        end_timestamp=end_dt,
+        event_id=event_id,
+        events_dict=events
+    )
+
     await interaction.response.send_message(
         "⚠️ คุณต้องการส่งข้อความนี้หรือไม่?", 
         embed=embed, 
         view=view, 
         ephemeral=True
     )
-    
+
     # รอการตอบสนองจากผู้ใช้
     await view.wait()
     
     if view.value is None:
         await interaction.followup.send("⏰ หมดเวลาการยืนยัน", ephemeral=True)
         return
-    elif view.value:
-        # ส่งข้อความไปยังช่องที่กำหนด
-        msg = await channel.send(embed=embed, view=EventViewWithMod(mod_links))
-        thread = await msg.create_thread(name=operation)
-        event_id = str(uuid.uuid4())
-        events[event_id] = {
-            'operation': operation,
-            'editor': editor,
-            'preset': preset,
-            'roles': roles,
-            'story': story,
-            'story_secondary': story_secondary,
-            'add_mod': mod_links,
-            'joined': [],
-            'declined': [],
-            'maybe': [],
-            'embed': embed,
-            'timestamp': start_timestamp,
-            'start_time': start_dt,
-            'end_time': end_dt,
-            'thread': thread,
-            'message': msg
-        }
-        await interaction.followup.send("✅ ข้อความถูกส่งเรียบร้อยแล้ว!", ephemeral=True)
-    else:
-        await interaction.followup.send("❌ การส่งข้อความถูกยกเลิก", ephemeral=True)
+    # elif view.value:  
+    #     # ส่งข้อความไปยังช่องที่กำหนด 
+    #     msg = await channel.send(embed=embed, view=InitialConfirmView(mod_links))
+    #     thread = await msg.create_thread(name=operation)
+    #     event_id = str(uuid.uuid4())
+    #     events[event_id] = {
+    #         'operation': operation,
+    #         'editor': editor,
+    #         'preset': preset,
+    #         'roles': roles,
+    #         'story': story,
+    #         'story_secondary': story_secondary,
+    #         'add_mod': mod_links,
+    #         'joined': [],
+    #         'declined': [],
+    #         'maybe': [],
+    #         'embed': embed,
+    #         'timestamp': start_timestamp,
+    #         'start_time': start_dt,
+    #         'end_time': end_dt,
+    #         'thread': thread,
+    #         'message': msg
+    #     }
+    #     await interaction.followup.send("✅ ข้อความถูกส่งเรียบร้อยแล้ว!", ephemeral=True)
+    # else:
+    #     await interaction.followup.send("❌ การส่งข้อความถูกยกเลิก", ephemeral=True)
 
     # DM ไปยัง Role ที่ถูกแท็กใน tags
     if tags:
