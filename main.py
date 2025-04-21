@@ -89,45 +89,43 @@ class EventView(View):
         await interaction.response.defer()
         await self.update_counts()
 
-    class EventViewWithMod(View):
-        def __init__(self, mod_links):
-            super().__init__(timeout=None)
-            self.mod_links = mod_links
-    
-        @discord.ui.button(label="เข้าร่วม", style=discord.ButtonStyle.success, emoji="✅")
-        async def join(self, interaction: discord.Interaction, button: Button):
-            # เพิ่มการจัดการเมื่อผู้ใช้กดปุ่ม "เข้าร่วม"
-            await interaction.response.send_message("✅ คุณได้เข้าร่วมกิจกรรมแล้ว!", ephemeral=True)
-    
-        @discord.ui.button(label="ไม่เข้าร่วม", style=discord.ButtonStyle.danger, emoji="❌")
-        async def decline(self, interaction: discord.Interaction, button: Button):
-            # เพิ่มการจัดการเมื่อผู้ใช้กดปุ่ม "ไม่เข้าร่วม"
-            await interaction.response.send_message("❌ คุณได้ปฏิเสธการเข้าร่วมกิจกรรม!", ephemeral=True)
-    
-        @discord.ui.button(label="อาจจะมา", style=discord.ButtonStyle.secondary, emoji="❓")
-        async def maybe(self, interaction: discord.Interaction, button: Button):
-            # เพิ่มการจัดการเมื่อผู้ใช้กดปุ่ม "อาจจะมา"
-            await interaction.response.send_message("❓ คุณอาจจะเข้าร่วมกิจกรรม!", ephemeral=True)
-    
-        @discord.ui.button(label="🔗Mod เพิ่มเติม", style=discord.ButtonStyle.primary, emoji="🔗")
-        async def view_mod(self, interaction: discord.Interaction, button: Button):
-            if self.mod_links:
-                embed = discord.Embed(
-                    title="🔗 Mod เพิ่มเติม",
-                    description="ลิงก์ Mod ที่เกี่ยวข้องกับกิจกรรมนี้:",
-                    color=discord.Color.blue()
-                )
-                for i, link in enumerate(self.mod_links, start=1):
-                    embed.add_field(name=f"Mod #{i}", value=f"[คลิกเพื่อดูข้อมูล]({link})", inline=False)
-    
-                embed.set_footer(
-                    text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
-                    icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
-                )
-                await interaction.response.send_message(embed=embed, ephemeral=True)
-            else:
-                await interaction.response.send_message("ไม่มี Mod เพิ่มเติมสำหรับกิจกรรมนี้", ephemeral=True)
-                
+class EventViewWithMod(View):
+    def __init__(self, mod_links):
+        super().__init__(timeout=None)
+        self.mod_links = mod_links
+
+    @discord.ui.button(label="เข้าร่วม", style=discord.ButtonStyle.success, emoji="✅")
+    async def join(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.send_message("✅ คุณได้เข้าร่วมกิจกรรมแล้ว!", ephemeral=True)
+
+    @discord.ui.button(label="ไม่เข้าร่วม", style=discord.ButtonStyle.danger, emoji="❌")
+    async def decline(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.send_message("❌ คุณได้ปฏิเสธการเข้าร่วมกิจกรรม!", ephemeral=True)
+
+    @discord.ui.button(label="อาจจะมา", style=discord.ButtonStyle.secondary, emoji="❓")
+    async def maybe(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.send_message("❓ คุณอาจจะเข้าร่วมกิจกรรม!", ephemeral=True)
+
+    @discord.ui.button(label="🔗Mod เพิ่มเติม", style=discord.ButtonStyle.primary, emoji="🔗")
+    async def view_mod(self, interaction: discord.Interaction, button: Button):
+        if self.mod_links:
+            embed = discord.Embed(
+                title="🔗 Mod เพิ่มเติม",
+                description="ลิงก์ Mod ที่เกี่ยวข้องกับกิจกรรมนี้:",
+                color=discord.Color.blue()
+            )
+            for i, link in enumerate(self.mod_links, start=1):
+                embed.add_field(name=f"Mod #{i}", value=f"[คลิกเพื่อดูข้อมูล]({link})", inline=False)
+
+            embed.set_footer(
+                text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
+                icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        else:
+            await interaction.response.send_message("ไม่มี Mod เพิ่มเติมสำหรับกิจกรรมนี้", ephemeral=True)
+
+
 async def update_summary_embed(event):
     joined = event.get('joined') or []
     declined = event.get('declined') or []
