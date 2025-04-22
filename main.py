@@ -345,6 +345,9 @@ class ConfirmationView(View):
     addmod="ลิงก์ Mod เพิ่มเติม (ใส่หลายลิงก์คั่นด้วยเครื่องหมายจุลภาค ',')(ถ้ามี)",
     image_url="URL ของรูปภาพกิจกรรม (ถ้ามี)"
 )
+
+
+
 async def create_event(interaction: discord.Interaction, 
     channel: discord.TextChannel, 
     datetime_input: str,
@@ -386,6 +389,29 @@ async def create_event(interaction: discord.Interaction,
     timestamp = int(dt_start.timestamp())
     end_timestamp = int(dt_end.timestamp())
     counts_text = f"✅joined (0) คน | ❌Declined (0) คน | ❓Tentative (0) คน"
+
+    
+    embed = discord.Embed(
+        title=f"📌 {operation}",
+        description=(
+            f"<t:{timestamp}:F> | <t:{timestamp}:R>\n"
+            f"**Editor:** {editor}\n"
+            f"**Preset:** {preset}\n"
+            f"**Tags:** {tags}\n\n"
+            f"📖 **Story:**\n{story}\n\n"
+            f"{substory if substory else ''}\n\n"
+            f"**Roles:** {roles}\n"
+        ),
+        color=discord.Color.red()
+    )
+    embed.add_field(name="จำนวนผู้ตอบรับ", value=counts_text, inline=False)
+    if image_url:
+        embed.set_image(url=image_url)
+    embed.set_footer(
+        text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
+        icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
+    )
+
 #=============================================================================================
     # แยก Mod Links
     mod_links = [link.strip() for link in addmod.split(",")] if addmod else []
