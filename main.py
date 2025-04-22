@@ -16,6 +16,7 @@ import logging
 import pytz
 import asyncio
 import uuid
+import re
 
 from datetime import datetime, timedelta
 from typing import Optional
@@ -358,6 +359,12 @@ async def create_event(interaction: discord.Interaction,
     image_url: Optional[str] = None):
 
     try:
+        # ตรวจสอบรูปแบบก่อน parse
+        pattern = r"^\d{2}-\d{2}-\d{4} \d{2}:\d{2}-\d{2}:\d{2}$"
+        if not re.match(pattern, datetime_input.strip()):
+            await interaction.response.send_message("❌ รูปแบบวันที่ไม่ถูกต้อง ใช้: 01-01-2568 20:00-23:00", ephemeral=True)
+            return
+
         day, month, year_time = datetime_input.split("-")
         year, time_range = year_time.split(" ")
         start_time_str, end_time_str = time_range.split("-")
@@ -368,6 +375,7 @@ async def create_event(interaction: discord.Interaction,
         dt_end = datetime(int(year), int(month), int(day), int(end_hour), int(end_minute))
         dt_start = bangkok_tz.localize(dt_start)
         dt_end = bangkok_tz.localize(dt_end)
+        
     except:
         await interaction.response.send_message("❌ รูปแบบวันที่ไม่ถูกต้อง ใช้: 01-01-2568 20:00-23:00", ephemeral=True)
         return
