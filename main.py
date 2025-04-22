@@ -175,30 +175,30 @@ async def event_timer(event_id):
     if wait_time > 0:
         await asyncio.sleep(wait_time)
 
-        # แจ้งเตือน 30 นาทีก่อนเริ่มกิจกรรม
-        for user_id in event['view'].notified_users:  # ส่ง DM เฉพาะผู้ที่กดปุ่ม "รับการแจ้งเตือน"
-            try:
-                user = await bot.fetch_user(user_id)
-                embed = discord.Embed(
-                    title="🔔 แจ้งเตือนกิจกรรม",
-                    description=(
-                        f"อีก 30 นาทีจะถึงเวลา **{event['operation']}** กำลังจะเริ่มแล้ว!\n"
-                        "ขอให้ผู้เล่นเตรียมตัวเข้า TeamSpeak 3 | Arma3 รอได้เลย!!!"
-                    ),
-                    color=discord.Color.orange()
-                )
-                embed.set_footer(
-                    text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
-                    icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
-                )
-                await user.send(embed=embed)
-            except Exception as e:
-                print(f"[ERROR] DM failed for user {user_id}: {e}")
+        # แจ้งเตือน 30 นาทีก่อนเริ่มกิจกรรม (DM)
+        if 'view' in event and hasattr(event['view'], 'notified_users'):
+            for user_id in event['view'].notified_users:
+                try:
+                    user = await bot.fetch_user(user_id)
+                    embed = discord.Embed(
+                        title="🔔 แจ้งเตือนกิจกรรม",
+                        description=(
+                            f"อีก 30 นาทีจะถึงเวลา **{event['operation']}** กำลังจะเริ่มแล้ว!\n"
+                            "ขอให้ผู้เล่นเตรียมตัวเข้า TeamSpeak 3 | Arma3 รอได้เลย!!!"
+                        ),
+                        color=discord.Color.orange()
+                    )
+                    embed.set_footer(
+                        text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
+                        icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
+                    )
+                    await user.send(embed=embed)
+                except Exception as e:
+                    print(f"[ERROR] DM failed for user {user_id}: {e}")
 
-        # แจ้งเตือนใน Thread
-
-    try:
-        embed_30_min = discord.Embed(
+        # แจ้งเตือน 30 นาทีใน Thread
+        try:
+            embed_30_min = discord.Embed(
                 title="🔔 แจ้งเตือนกิจกรรม",
                 description=(
                     f"อีก 30 นาทีจะถึงเวลา **{event['operation']}** กำลังจะเริ่มแล้ว!\n"
@@ -206,16 +206,14 @@ async def event_timer(event_id):
                 ),
                 color=discord.Color.orange()
             )
-        embed_30_min.set_footer(
+            embed_30_min.set_footer(
                 text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
                 icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
             )
-        
-        # ส่ง Embed ไปยัง Thread
-        await event['thread'].send(embed=embed_30_min)
-        print(f"[INFO] Sent 30-minute warning to thread for event {event['operation']}")
-    except Exception as e:
-        print(f"[ERROR] Failed to send 30-minute warning to thread: {e}")
+            await event['thread'].send(embed=embed_30_min)
+            print(f"[INFO] Sent 30-minute warning to thread for event {event['operation']}")
+        except Exception as e:
+            print(f"[ERROR] Failed to send 30-minute warning to thread: {e}")
 
 #=============================================================================================
 #อัปเดตสถานะกิจกรรม 
@@ -407,12 +405,13 @@ async def create_event(interaction: discord.Interaction,
     if view.value is None:
         await interaction.followup.send("⏰ หมดเวลาการยืนยัน", ephemeral=True)
         return
+    
     elif view.value:
         # ส่งข้อความไปยังช่องที่กำหนด
         msg = await channel.send(embed=embed, view=None)
-    
         thread = await msg.create_thread(name=operation)
         event_id = str(uuid.uuid4())
+        view = EventView(msg, event_id, mod_links)
         events[event_id] = {
             'operation': operation,
             'editor': editor,
@@ -426,52 +425,46 @@ async def create_event(interaction: discord.Interaction,
             'timestamp': timestamp,
             'start_time': dt,
             'thread': thread,
-            'message': msg
+            'message': msg,
+            'view': view,  
         }
-        view = EventView(msg, event_id, mod_links)
         await msg.edit(embed=embed, view=view)
         bot.loop.create_task(event_timer(event_id))
         await interaction.followup.send("✅ ข้อความถูกส่งเรียบร้อยแล้ว!", ephemeral=True)
-    else:
-        await interaction.followup.send("❌ การส่งข้อความถูกยกเลิก", ephemeral=True)
 
-    # DM ไปยัง Role ที่ถูกแท็กใน tags
-    if tags:
-        # แยกค่า tags ออกเป็นรายการ
-        tag_list = tags.split()
-        sent_users = set()  # เก็บ user_id ของผู้ใช้ที่ส่งข้อความไปแล้ว
-    
-        for tag in tag_list:
-            # ตรวจสอบว่าเป็น Role หรือไม่
-            if tag.startswith("<@&"):  # Role
-                role_id = int(tag.replace("<@&", "").replace(">", ""))
-                role = discord.utils.get(interaction.guild.roles, id=role_id)
-                if role:
-                    msg_link = f"https://discord.com/channels/{interaction.guild.id}/{channel.id}/{msg.id}"
-                    for member in role.members:
-                        if member.bot or member.id in sent_users:
-                            continue  # ข้ามผู้ใช้ที่เป็นบอทหรือส่งข้อความไปแล้ว
-                        try:
-                            # สร้าง Embed สำหรับข้อความ DM
-                            embed = discord.Embed(
-                                title="📣 มีกิจกรรมใหม่!",
-                                description=(
-                                    f"**📌 ชื่อกิจกรรม:** {operation}\n"
-                                    f"**📅 วันที่:** <t:{timestamp}:D>\n"
-                                    f"**🕒 เวลา:** <t:{timestamp}:t>\n\n"
-                                    f"หากสนใจเข้าร่วมกิจกรรม สามารถตอบรับได้ที่โพสต์นี้\n"
-                                    f"[🔗 ดูรายละเอียดกิจกรรม]({msg_link})"
-                                ),
-                                color=discord.Color.blue()
-                            )
-                            embed.set_footer(
-                                text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
-                                icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
-                            )
-                            await member.send(embed=embed)
-                            sent_users.add(member.id)  # เพิ่ม user_id ลงใน set
-                        except Exception as e:
-                            logging.warning(f"❌ ไม่สามารถส่งข้อความให้ {member.name}: {e}")
+        # DM ไปยัง Role ที่ถูกแท็กใน tags 
+        if tags:
+            tag_list = tags.split()
+            sent_users = set()
+            for tag in tag_list:
+                if tag.startswith("<@&"):
+                    role_id = int(tag.replace("<@&", "").replace(">", ""))
+                    role = discord.utils.get(interaction.guild.roles, id=role_id)
+                    if role:
+                        msg_link = f"https://discord.com/channels/{interaction.guild.id}/{channel.id}/{msg.id}"
+                        for member in role.members:
+                            if member.bot or member.id in sent_users:
+                                continue
+                            try:
+                                embed_dm = discord.Embed(
+                                    title="📣 มีกิจกรรมใหม่!",
+                                    description=(
+                                        f"**📌 ชื่อกิจกรรม:** {operation}\n"
+                                        f"**📅 วันที่:** <t:{timestamp}:D>\n"
+                                        f"**🕒 เวลา:** <t:{timestamp}:t>\n\n"
+                                        f"หากสนใจเข้าร่วมกิจกรรม สามารถตอบรับได้ที่โพสต์นี้\n"
+                                        f"[🔗 ดูรายละเอียดกิจกรรม]({msg_link})"
+                                    ),
+                                    color=discord.Color.blue()
+                                )
+                                embed_dm.set_footer(
+                                    text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
+                                    icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
+                                )
+                                await member.send(embed=embed_dm)
+                                sent_users.add(member.id)
+                            except Exception as e:
+                                logging.warning(f"❌ ไม่สามารถส่งข้อความให้ {member.name}: {e}")
 #=============================================================================================
 #⚠️ /Help แสดงคำสั่งทั้งหมดของบอท
 @bot.tree.command(name="help", description="แสดงคำสั่งทั้งหมดของบอท")
