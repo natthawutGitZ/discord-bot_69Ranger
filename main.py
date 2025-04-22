@@ -59,11 +59,11 @@ class EventView(View):
         self.message = message
         self.event_id = event_id
         self.mod_links = mod_links
-        self.notified_users = set()  # เก็บรายชื่อผู้ที่กดปุ่ม "รับการแจ้งเตือน"
+        self.notified_users = set()  # เก็บรายชื่อผู้ที่กดปุ่ม "รับการแจ้งเตือน"   
 
     async def update_counts(self):
         event = events[self.event_id]
-        counts = f"✅เข้าร่วม {len(event['joined'])} คน | ❌ไม่เข้าร่วม {len(event['declined'])} คน | ❓อาจจะเข้า {len(event['maybe'])} คน"
+        counts = f"✅Accepted ( {len(event['joined'])} ) คน | ❌Declined ( {len(event['declined'])} ) คน | ❓Tentative ( {len(event['maybe'])} ) คน"
 
         embed = event['embed']
         if embed.fields:
@@ -336,6 +336,7 @@ class ConfirmationView(View):
     tags="แท็กผู้เข้าร่วม เลือก Role ที่ต้องการแท็ก (ห้าม @everyone หรือ @here)",
     roles="บทบาทที่ได้เล่น (เช่น 75th Ranger Regiment)",
     story="เนื้อเรื่องของกิจกรรม (เช่น เรื่องราวที่เกี่ยวข้องกับกิจกรรม)",
+    substory="ย่อหน้าเนื้อเรือง หรือ ข้อมูล HVT (ถ้ามี)",
     addmod="ลิงก์ Mod เพิ่มเติม (ใส่หลายลิงก์คั่นด้วยเครื่องหมายจุลภาค ',')(ถ้ามี)",
     image_url="URL ของรูปภาพกิจกรรม (ถ้ามี)"
 )
@@ -348,6 +349,7 @@ async def create_event(interaction: discord.Interaction,
     tags: str, 
     roles: str, 
     story: str, 
+    substory: Optional[str] = None, 
     addmod: Optional[str] = None,
     image_url: Optional[str] = None):
 
@@ -363,9 +365,10 @@ async def create_event(interaction: discord.Interaction,
         return
 
     timestamp = int(dt.timestamp())
-    counts_text = f"✅เข้าร่วม 0 คน | ❌ไม่เข้าร่วม 0 คน | ❓อาจจะเข้าร่วม 0 คน"
-#=============================================================================================
+    counts_text = f"✅joined (0) คน | ❌Declined (0) คน | ❓Tentative (0) คน"
+#=============================================================================================  
 # สร้าง Embed ตัวอย่าง
+
     embed = discord.Embed(
         title=f"📌 {operation}",
         description=(
@@ -373,8 +376,9 @@ async def create_event(interaction: discord.Interaction,
             f"**Editor:** {editor}\n"
             f"**Preset:** {preset}\n"
             f"**Tags:** {tags}\n\n"
-            f"📖 **Story:**\n{story}\n\n"  
-             f"**Roles:** {roles}"
+            f"📖 **Story:**\n{story}\n"
+            f"{substory if substory else ''}\n\n"  
+            f"**Roles:** {roles}\n"
         ),
         color=discord.Color.red()
     )
