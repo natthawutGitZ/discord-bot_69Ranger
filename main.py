@@ -359,7 +359,8 @@ async def create_event(interaction: discord.Interaction,
     image_url: Optional[str] = None):
 
     try:
-        # ตรวจสอบรูปแบบก่อน parse
+        # DEBUG: print input ที่รับเข้ามา
+        print(f"DEBUG datetime_input: '{datetime_input}'")
         pattern = r"^\d{2}-\d{2}-\d{4} \d{2}:\d{2}-\d{2}:\d{2}$"
         if not re.match(pattern, datetime_input.strip()):
             await interaction.response.send_message("❌ รูปแบบวันที่ไม่ถูกต้อง ใช้: 01-01-2568 20:00-23:00", ephemeral=True)
@@ -375,7 +376,7 @@ async def create_event(interaction: discord.Interaction,
         dt_end = datetime(int(year), int(month), int(day), int(end_hour), int(end_minute))
         dt_start = bangkok_tz.localize(dt_start)
         dt_end = bangkok_tz.localize(dt_end)
-        
+
     except:
         await interaction.response.send_message("❌ รูปแบบวันที่ไม่ถูกต้อง ใช้: 01-01-2568 20:00-23:00", ephemeral=True)
         return
