@@ -284,11 +284,18 @@ async def event_timer(event_id):
     except Exception as e:
         print(f"[ERROR] Failed to update event status to finished: {e}")
 
-#=============================================================================================
+        # ...หลังจากอัปเดต embed เป็นจบกิจกรรม...
+    try:
+        await event['message'].edit(embed=embed, view=None)
+    except Exception as e:
+        print(f"[ERROR] Failed to update event status to finished: {e}")
+
     # ส่งข้อความขอบคุณใน Thread ของกิจกรรม
-        await send_thank_you_message(event)
+    await send_thank_you_message(event)
+
+#=============================================================================================
+    async def send_thank_you_message(event):
         try:
-            # สร้าง Embed สำหรับข้อความขอบคุณ
             embed = discord.Embed(
                 title="⚫ กิจกรรมสิ้นสุดแล้ว",
                 description=(
@@ -303,8 +310,6 @@ async def event_timer(event_id):
                 text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
                 icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
             )
-    
-            # ส่ง Embed ไปยัง Thread
             await event['thread'].send(embed=embed)
             logging.info(f"✅ ส่งข้อความขอบคุณใน Thread สำเร็จ")
         except Exception as e:
