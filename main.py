@@ -269,8 +269,11 @@ async def event_timer(event_id):
     except Exception as e:
         print(f"[ERROR] Failed to send event start notification to thread: {e}")
 #=============================================================================================
-    # รอ 3 ชั่วโมง 30 นาที แล้วอัปเดตสถานะเป็นจบ
-    await asyncio.sleep(3.5 * 3600)
+    # รอจนถึงเวลาสิ้นสุดกิจกรรม
+    now = datetime.now(bangkok_tz)
+    wait_until_end = (event['end_time'] - now).total_seconds()
+    if wait_until_end > 0:
+        await asyncio.sleep(wait_until_end)
 
     # อัปเดตสถานะกิจกรรมเป็นจบ
     embed = event['embed']
@@ -282,7 +285,7 @@ async def event_timer(event_id):
 
 #=============================================================================================
     # ส่งข้อความขอบคุณใน Thread ของกิจกรรม
-    async def send_thank_you_message(event):
+        await send_thank_you_message(event)
         try:
             # สร้าง Embed สำหรับข้อความขอบคุณ
             embed = discord.Embed(
@@ -326,10 +329,11 @@ class ConfirmationView(View):
         self.stop()
 #=============================================================================================
 #⚠️ /event สร้างกิจกรรมพร้อมปุ่มตอบรับ
+
 @tree.command(name="event", description="สร้างกิจกรรมพร้อมปุ่มตอบรับ")
 @app_commands.describe(
     channel="เลือกห้องที่จะโพสต์กิจกรรม",
-    datetime_input="วันและเวลาของกิจกรรม (เช่น 01-01-2568 20:30)",
+    datetime_input="วันและเวลาของกิจกรรม (เช่น 01-01-2568 20:00-23:00)",
     operation="ชื่อ Operation (เช่น The Darknight Ep.4)",
     editor="ชื่อผู้แก้ไข (เช่น @Silver BlackWell)",
     preset="Mod ที่ใช้งาน (เช่น69Ranger RE Preset Edit V5)",
@@ -355,42 +359,22 @@ async def create_event(interaction: discord.Interaction,
 
     try:
         day, month, year_time = datetime_input.split("-")
-        year, time = year_time.split(" ")
-        hour, minute = time.split(":")
+        year, time_range = year_time.split(" ")
+        start_time_str, end_time_str = time_range.split("-")
+        hour, minute = start_time_str.split(":")
+        end_hour, end_minute = end_time_str.split(":")
         year = int(year) - 543
-        dt = datetime(int(year), int(month), int(day), int(hour), int(minute))
-        dt = bangkok_tz.localize(dt)
+        dt_start = datetime(int(year), int(month), int(day), int(hour), int(minute))
+        dt_end = datetime(int(year), int(month), int(day), int(end_hour), int(end_minute))
+        dt_start = bangkok_tz.localize(dt_start)
+        dt_end = bangkok_tz.localize(dt_end)
     except:
-        await interaction.response.send_message("❌ รูปแบบวันที่ไม่ถูกต้อง ใช้: 01-01-2568 20:30", ephemeral=True)
+        await interaction.response.send_message("❌ รูปแบบวันที่ไม่ถูกต้อง ใช้: 01-01-2568 20:00-23:00", ephemeral=True)
         return
 
-    timestamp = int(dt.timestamp())
+    timestamp = int(dt_start.timestamp())
+    end_timestamp = int(dt_end.timestamp())
     counts_text = f"✅joined (0) คน | ❌Declined (0) คน | ❓Tentative (0) คน"
-#=============================================================================================  
-# สร้าง Embed ตัวอย่าง
-
-    embed = discord.Embed(
-        title=f"📌 {operation}",
-        description=(
-            f"<t:{timestamp}:F> | <t:{timestamp}:R>\n"
-            f"**Editor:** {editor}\n"
-            f"**Preset:** {preset}\n"
-            f"**Tags:** {tags}\n\n"
-            f"📖 **Story:**\n{story}\n"
-            f"{substory if substory else ''}\n\n"  
-            f"**Roles:** {roles}\n"
-        ),
-        color=discord.Color.red()
-    )
-    embed.add_field(name="จำนวนผู้ตอบรับ", value=counts_text, inline=False)
-
-    if image_url:
-        embed.set_image(url=image_url)
-
-    embed.set_footer(
-        text=f"69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
-        icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
-    )
 #=============================================================================================
     # แยก Mod Links
     mod_links = [link.strip() for link in addmod.split(",")] if addmod else []
@@ -427,7 +411,8 @@ async def create_event(interaction: discord.Interaction,
             'maybe': [],
             'embed': embed,
             'timestamp': timestamp,
-            'start_time': dt,
+            'start_time': dt_start,
+            'end_time': dt_end,  # เพิ่มเวลาสิ้นสุดกิจกรรม
             'thread': thread,
             'message': msg,
             'view': view,  
