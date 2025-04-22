@@ -314,19 +314,19 @@ async def event_timer(event_id):
 # ฟังก์ชันสำหรับการยืนยันการส่งข้อความ 
 class ConfirmationView(View):
     def __init__(self):
-        super().__init__(timeout=120)  # ตั้งเวลาหมดอายุ 120 วินาที
+        super().__init__(timeout=120)
         self.value = None
 
     @discord.ui.button(label="ยืนยัน", style=discord.ButtonStyle.success)
     async def confirm(self, interaction: discord.Interaction, button: Button):
         self.value = True
-        await interaction.response.defer()
+        await interaction.response.edit_message(content="✅ ยืนยันการสร้างกิจกรรมแล้ว", view=None)
         self.stop()
 
     @discord.ui.button(label="ยกเลิก", style=discord.ButtonStyle.danger)
     async def cancel(self, interaction: discord.Interaction, button: Button):
         self.value = False
-        await interaction.response.defer()
+        await interaction.response.edit_message(content="❌ ยกเลิกการสร้างกิจกรรม", view=None)
         self.stop()
 #=============================================================================================
 #⚠️ /event สร้างกิจกรรมพร้อมปุ่มตอบรับ
