@@ -166,6 +166,29 @@ async def update_summary_embed(event):
         thread_msg = await event['thread'].send(embed=embed)
         event['thread_message'] = thread_msg
 #=============================================================================================
+# ฟังก์ชันสำหรับส่งข้อความขอบคุณใน Thread ของกิจกรรม
+async def send_thank_you_message(event):
+    try:
+        embed = discord.Embed(
+            title="⚫ กิจกรรมสิ้นสุดแล้ว",
+            description=(
+                f"**{event['operation']}** ได้จบลงแล้ว!\n\n"
+                "ขอบคุณสำหรับการเข้าร่วมกิจกรรม!\n"
+                "หากมีข้อเสนอแนะหรือคำติชม โปรดแจ้งให้เราทราบเพื่อปรับปรุงในอนาคต 😊\n\n"
+                "เราหวังว่าจะได้พบคุณในกิจกรรมครั้งถัดไป!"
+            ),
+            color=discord.Color.dark_gray()
+        )
+        embed.set_footer(
+            text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
+            icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
+        )
+        await event['thread'].send(embed=embed)
+        logging.info(f"✅ ส่งข้อความขอบคุณใน Thread สำเร็จ")
+    except Exception as e:
+        logging.error(f"❌ เกิดข้อผิดพลาดในการส่งข้อความใน Thread: {e}")
+
+#=============================================================================================
 # ฟังก์ชันสำหรับการแจ้งเตือนกิจกรรม แจ้งเตือน 30 นาทีก่อนเริ่มกิจกรรม
 async def event_timer(event_id):
     event = events[event_id]
@@ -294,28 +317,7 @@ async def event_timer(event_id):
     await send_thank_you_message(event)
 
 #=============================================================================================
-    async def send_thank_you_message(event):
-        try:
-            embed = discord.Embed(
-                title="⚫ กิจกรรมสิ้นสุดแล้ว",
-                description=(
-                    f"**{event['operation']}** ได้จบลงแล้ว!\n\n"
-                    "ขอบคุณสำหรับการเข้าร่วมกิจกรรม!\n"
-                    "หากมีข้อเสนอแนะหรือคำติชม โปรดแจ้งให้เราทราบเพื่อปรับปรุงในอนาคต 😊\n\n"
-                    "เราหวังว่าจะได้พบคุณในกิจกรรมครั้งถัดไป!"
-                ),
-                color=discord.Color.dark_gray()
-            )
-            embed.set_footer(
-                text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
-                icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
-            )
-            await event['thread'].send(embed=embed)
-            logging.info(f"✅ ส่งข้อความขอบคุณใน Thread สำเร็จ")
-        except Exception as e:
-            logging.error(f"❌ เกิดข้อผิดพลาดในการส่งข้อความใน Thread: {e}")
 
-#=============================================================================================
 # ฟังก์ชันสำหรับการยืนยันการส่งข้อความ 
 class ConfirmationView(View):
     def __init__(self):
@@ -393,7 +395,7 @@ async def create_event(interaction: discord.Interaction,
 
     timestamp = int(dt_start.timestamp())
     end_timestamp = int(dt_end.timestamp())
-    counts_text = f"✅joined (0) คน | ❌Declined (0) คน | ❓Tentative (0) คน"
+    counts_text = f"✅ joined (0) คน | ❌ Declined (0) คน | ❓ Tentative (0) คน"
 
     
     embed = discord.Embed(
