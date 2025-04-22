@@ -361,14 +361,16 @@ async def create_event(interaction: discord.Interaction,
     try:
         # DEBUG: print input ที่รับเข้ามา
         print(f"DEBUG datetime_input: '{datetime_input}'")
-        pattern = r"^\d{2}-\d{2}-\d{4} \d{2}:\d{2}-\d{2}:\d{2}$"
+        # รองรับรูปแบบ 22-04-2568 23:57-23:59 หรือ 22-04-2568 23:57 - 23:59 (มีหรือไม่มี space รอบขีดกลาง)
+        pattern = r"^\d{2}-\d{2}-\d{4} \d{2}:\d{2}\s*-\s*\d{2}:\d{2}$"
         if not re.match(pattern, datetime_input.strip()):
             await interaction.response.send_message("❌ รูปแบบวันที่ไม่ถูกต้อง ใช้: 01-01-2568 20:00-23:00", ephemeral=True)
             return
-
-        day, month, year_time = datetime_input.split("-")
-        year, time_range = year_time.split(" ")
-        start_time_str, end_time_str = time_range.split("-")
+    
+        # แยกวันที่และเวลาทั้งหมด
+        date_part, time_part = datetime_input.strip().split(" ", 1)
+        start_time_str, end_time_str = [t.strip() for t in re.split(r"-", time_part)]
+        day, month, year = date_part.split("-")
         hour, minute = start_time_str.split(":")
         end_hour, end_minute = end_time_str.split(":")
         year = int(year) - 543
@@ -376,8 +378,8 @@ async def create_event(interaction: discord.Interaction,
         dt_end = datetime(int(year), int(month), int(day), int(end_hour), int(end_minute))
         dt_start = bangkok_tz.localize(dt_start)
         dt_end = bangkok_tz.localize(dt_end)
-
-    except:
+    except Exception as e:
+        print(f"[ERROR] datetime_input parse: {e}")
         await interaction.response.send_message("❌ รูปแบบวันที่ไม่ถูกต้อง ใช้: 01-01-2568 20:00-23:00", ephemeral=True)
         return
 
