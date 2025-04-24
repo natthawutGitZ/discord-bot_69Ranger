@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from discord.ext import commands
 from discord import app_commands
-from discord.ui import View, Button, Modal, TextInput
+from discord.ui import Select, View, Button, Modal, TextInput
 from itertools import zip_longest
 from keep_alive import keep_alive
 
@@ -66,6 +66,14 @@ class EventView(View):
         event = events[self.event_id]
         counts = f"✅Accepted ( {len(event['joined'])} ) คน | ❌Declined ( {len(event['declined'])} ) คน | ❓Tentative ( {len(event['maybe'])} ) คน"
 
+        # เพิ่ม Dropdown สำหรับ Mod Links
+        if self.mod_links:
+            self.add_item(ModDropdown(self.mod_links))
+
+        # เพิ่ม Dropdown สำหรับการแจ้งเตือน
+        self.add_item(NotificationDropdown(self.notified_users))
+
+
         embed = event['embed']
         if embed.fields:
             embed.set_field_at(0, name="จำนวนผู้ตอบรับ", value=counts, inline=False)
@@ -104,42 +112,40 @@ class EventView(View):
     async def maybe(self, interaction: discord.Interaction, button: Button):
         await self.handle_response(interaction, 'maybe')
 
-    @discord.ui.button(label="🔗Mod เพิ่มเติม", style=discord.ButtonStyle.primary, emoji="🔗", row=1)
-    async def view_mod(self, interaction: discord.Interaction, button: Button):
-        if self.mod_links:
-            embed = discord.Embed(
-                title="🔗 Mod เพิ่มเติม",
-                description="ลิงก์ Mod ที่เกี่ยวข้องกับกิจกรรมนี้:",
-                color=discord.Color.blue()
-            )
-            for i, link in enumerate(self.mod_links, start=1):
-                embed.add_field(name=f"Mod #{i}", value=f"[คลิกเพื่อดูข้อมูล]({link})", inline=False)
+class ModDropdown(Select):
+    def __init__(self, mod_links):
+        options = [
+            discord.SelectOption(label=f"Mod #{i+1}", value=link, description="คลิกเพื่อดูข้อมูล")
+            for i, link in enumerate(mod_links)
+        ]
+        super().__init__(placeholder="🔗 เลือก Mod เพิ่มเติม", options=options)
 
-            embed.set_footer(
-                text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
-                icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
-            )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-        else:
-            embed = discord.Embed(
-                title="🔗 Mod เพิ่มเติม",
-                description="❌ Preset-mod ไม่มีการเพิ่ม mod ใดๆ",
-                color=discord.Color.red()
-            )
-            embed.set_footer(
-                text="69Ranger Gentleman Community Bot | พัฒนาโดย Silver BlackWell",
-                icon_url="https://images-ext-1.discordapp.net/external/KHtLY8ldGkiHV5DbL-N3tB9Nynft4vdkfUMzQ5y2A_E/https/cdn.discordapp.com/avatars/1290696706605842482/df2732e4e949bcb179aa6870f160c615.png"
-            )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.send_message(f"🔗 [คลิกเพื่อดู Mod]({self.values[0]})", ephemeral=True)
 
-    @discord.ui.button(label="รับการแจ้งเตือน", style=discord.ButtonStyle.success, emoji="🔔", row=1)
-    async def notify(self, interaction: discord.Interaction, button: Button):
+class NotificationDropdown(Select):
+    def __init__(self, notified_users):
+        options = [
+            discord.SelectOption(label="เปิดการแจ้งเตือน", value="enable", emoji="🔔"),
+            discord.SelectOption(label="ปิดการแจ้งเตือน", value="disable", emoji="🔕"),
+        ]
+        super().__init__(placeholder="🔔 การแจ้งเตือน", options=options)
+        self.notified_users = notified_users
+
+    async def callback(self, interaction: discord.Interaction):
         user_id = interaction.user.id
-        if user_id not in self.notified_users:
-            self.notified_users.add(user_id)
-            await interaction.response.send_message("✅ คุณจะได้รับการแจ้งเตือนทาง DM!", ephemeral=True)
-        else:
-            await interaction.response.send_message("❌ คุณได้สมัครรับการแจ้งเตือนไปแล้ว!", ephemeral=True)
+        if self.values[0] == "enable":
+            if user_id not in self.notified_users:
+                self.notified_users.add(user_id)
+                await interaction.response.send_message("✅ คุณจะได้รับการแจ้งเตือนทาง DM!", ephemeral=True)
+            else:
+                await interaction.response.send_message("❌ คุณได้เปิดการแจ้งเตือนไปแล้ว!", ephemeral=True)
+        elif self.values[0] == "disable":
+            if user_id in self.notified_users:
+                self.notified_users.remove(user_id)
+                await interaction.response.send_message("✅ คุณได้ปิดการแจ้งเตือนแล้ว!", ephemeral=True)
+            else:
+                await interaction.response.send_message("❌ คุณยังไม่ได้เปิดการแจ้งเตือน!", ephemeral=True)
 
 #=============================================================================================
 # ฟังก์ชันสำหรับอัปเดต Embed สรุปการตอบรับ
@@ -239,6 +245,7 @@ async def event_timer(event_id):
         except Exception as e:
             print(f"[ERROR] Failed to send 30-minute warning to thread: {e}")
 
+
 #=============================================================================================
 #อัปเดตสถานะกิจกรรม 
     now = datetime.now(bangkok_tz)
@@ -248,10 +255,17 @@ async def event_timer(event_id):
 
     embed = event['embed']
     embed.title = f"🟢 {event['operation']} (อยู่ในระหว่างกำลังดำเนินการ)"
-    await event['message'].edit(embed=embed, view=None)
+    try:
+        await event['message'].edit(embed=embed, view=None)
+    except discord.errors.NotFound:
+        print(f"[ERROR] Message for event {event['operation']} not found. It may have been deleted.")
+        return
+    except Exception as e:
+        print(f"[ERROR] Failed to edit message for event {event['operation']}: {e}")
+        return
 #=============================================================================================
 # ส่ง DM เฉพาะผู้ที่กดปุ่ม "รับการแจ้งเตือน "ส่ง DM แจ้งว่าเริ่มกิจกรรมแล้ว
-    for user_id in event['view'].notified_users:  # ส่ง DM เฉพาะผู้ที่กดปุ่ม "รับการแจ้งเตือน"
+    for user_id in event['view'].notified_users:
         try:
             user = await bot.fetch_user(user_id)
             embed = discord.Embed(
@@ -270,7 +284,6 @@ async def event_timer(event_id):
             await user.send(embed=embed)
         except Exception as e:
             print(f"[ERROR] Failed to DM user {user_id}: {e}")
-
     # แจ้งใน Thread ว่ากิจกรรมเริ่มต้นแล้ว
     try:
         embed_start = discord.Embed(
