@@ -630,17 +630,20 @@ async def announce_command(interaction: discord.Interaction, channel: discord.Te
         embed.set_image(url=image_url)
 
     view = ConfirmationView()
-    await interaction.response.send_message("⚠️ คุณต้องการส่งข้อความนี้หรือไม่?", embed=embed, view=view, ephemeral=True)
-
+    try:
+        await interaction.response.send_message("⚠️ คุณต้องการส่งข้อความนี้หรือไม่?", embed=embed, view=view, ephemeral=True)
+    except discord.errors.NotFound:
+        await interaction.followup.send("❌ การโต้ตอบหมดอายุแล้ว กรุณาลองใหม่อีกครั้ง", ephemeral=True)
+        return
+    
     # รอการตอบสนองจากผู้ใช้
     await view.wait()
-
+    
     if view.value is None:
         await interaction.followup.send("⏰ หมดเวลาการยืนยัน", ephemeral=True)
         return
     elif view.value:
         try:
-            # ส่งข้อความพร้อมรูปภาพ
             embed = discord.Embed(description=message, color=discord.Color.green())
             if image_url:
                 embed.set_image(url=image_url)
