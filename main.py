@@ -115,9 +115,11 @@ class EventView(View):
 
 class ModDropdown(Select):
     def __init__(self, mod_links):
+        # ลบค่าที่ซ้ำกันใน mod_links
+        unique_links = list(dict.fromkeys(mod_links))  # ใช้ dict เพื่อกรองค่าซ้ำ
         options = [
             discord.SelectOption(label=f"Mod #{i+1}", value=link, description="คลิกเพื่อดูข้อมูล")
-            for i, link in enumerate(mod_links)
+            for i, link in enumerate(unique_links)
         ]
         super().__init__(placeholder="🔗 เลือก Mod เพิ่มเติม", options=options)
 
