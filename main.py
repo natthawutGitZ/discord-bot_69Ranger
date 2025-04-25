@@ -65,15 +65,16 @@ class EventView(View):
     async def update_counts(self):
         event = events[self.event_id]
         counts = f"✅Accepted ( {len(event['joined'])} ) คน | ❌Declined ( {len(event['declined'])} ) คน | ❓Tentative ( {len(event['maybe'])} ) คน"
-
-        # เพิ่ม Dropdown สำหรับ Mod Links
-        if self.mod_links:
-            self.add_item(ModDropdown(self.mod_links))
-
-        # เพิ่ม Dropdown สำหรับการแจ้งเตือน
-        self.add_item(NotificationDropdown(self.notified_users))
-
-
+    
+        # ตรวจสอบก่อนเพิ่ม ModDropdown
+        if not any(isinstance(item, ModDropdown) for item in self.children):
+            if self.mod_links:
+                self.add_item(ModDropdown(self.mod_links))
+    
+        # ตรวจสอบก่อนเพิ่ม NotificationDropdown
+        if not any(isinstance(item, NotificationDropdown) for item in self.children):
+            self.add_item(NotificationDropdown(self.notified_users))
+    
         embed = event['embed']
         if embed.fields:
             embed.set_field_at(0, name="จำนวนผู้ตอบรับ", value=counts, inline=False)
