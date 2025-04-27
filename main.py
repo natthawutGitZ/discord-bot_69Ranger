@@ -545,6 +545,8 @@ def datetime_converter(o):
         return o.to_dict()  # แปลง Embed เป็น dict
     elif isinstance(o, discord.Thread):
         return {"id": o.id}  # เก็บเฉพาะ ID ของ Thread
+    elif isinstance(o, discord.Message):
+        return {"id": o.id, "channel_id": o.channel.id}  # เก็บเฉพาะ ID ของ Message และ Channel
     raise TypeError(f"Type {type(o)} not serializable")
 
 async def backup_events_periodically():
@@ -576,6 +578,11 @@ def restore_events():
                 # แปลง thread จาก dict เป็น discord.Thread (ใช้ ID เพื่อค้นหา Thread)
                 thread_id = event_data['thread']['id']
                 event_data['thread'] = bot.get_channel(thread_id)
+
+                # กู้คืน message จาก message.id และ channel.id
+                message_data = event_data['message']
+                channel = bot.get_channel(message_data['channel_id'])
+                event_data['message'] = await channel.fetch_message(message_data['id'])
 
                 # สร้าง View ใหม่
                 view = EventView(event_data['message'], event_id, event_data.get('mod_links', []))
