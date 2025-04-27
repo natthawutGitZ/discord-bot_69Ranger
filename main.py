@@ -516,6 +516,26 @@ async def create_event(interaction: discord.Interaction,
                             except Exception as e:
                                 logging.warning(f"❌ ไม่สามารถส่งข้อความให้ {member.name}: {e}")
 #=============================================================================================
+#⚠️ /backup_events ทดสอบการ Backup ข้อมูล
+@bot.tree.command(name="backup_events", description="ทดสอบการ Backup ข้อมูลกิจกรรม")
+async def backup_events_command(interaction: discord.Interaction):
+    try:
+        # แปลง embed เป็น dict ก่อนบันทึก
+        backup_data = {
+            event_id: {
+                **event_data,
+                'embed': event_data['embed'].to_dict()  # แปลง embed เป็น dict
+            }
+            for event_id, event_data in events.items()
+        }
+        with open("events_backup.json", "w", encoding="utf-8") as f:
+            json.dump(backup_data, f, ensure_ascii=False, indent=4, default=datetime_converter)
+        await interaction.response.send_message("✅ Backup ข้อมูล Event สำเร็จ!", ephemeral=True)
+        logging.info("✅ Backup ข้อมูล Event สำเร็จ")
+    except Exception as e:
+        await interaction.response.send_message(f"❌ เกิดข้อผิดพลาดในการ Backup ข้อมูล: {e}", ephemeral=True)
+        logging.error(f"❌ เกิดข้อผิดพลาดในการ Backup ข้อมูล: {e}")
+        
 # ฟังก์ชันสำหรับ Backup ข้อมูลกิจกรรม
 
 def datetime_converter(o):
