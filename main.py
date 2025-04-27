@@ -17,6 +17,7 @@ import pytz
 import asyncio
 import uuid
 import re
+import json
 
 from datetime import datetime, timedelta
 from typing import Optional
@@ -515,6 +516,44 @@ async def create_event(interaction: discord.Interaction,
                             except Exception as e:
                                 logging.warning(f"❌ ไม่สามารถส่งข้อความให้ {member.name}: {e}")
 #=============================================================================================
+# ฟังก์ชันสำหรับ Backup ข้อมูลกิจกรรม
+async def backup_events_periodically():
+    while True:
+        try:
+            with open("events_backup.json", "w", encoding="utf-8") as f:
+                json.dump(events, f, ensure_ascii=False, indent=4, default=str)
+            logging.info("✅ Backup ข้อมูล Event สำเร็จ")
+        except Exception as e:
+            logging.error(f"❌ เกิดข้อผิดพลาดในการ Backup ข้อมูล: {e}")
+        await asyncio.sleep(1800)  # รอ 30 นาที (1800 วินาที) ก่อน Backup ครั้งถัดไป
+
+# ฟังก์ชันสำหรับ Restore ข้อมูล
+def restore_events():
+    global events
+    try:
+        with open("events_backup.json", "r", encoding="utf-8") as f:
+            restored_events = json.load(f)
+            for event_id, event_data in restored_events.items():
+                # สร้าง View ใหม่
+                view = EventView(event_data['message'], event_id, event_data.get('mod_links', []))
+                event_data['view'] = view
+
+                # สร้าง Task สำหรับ event_timer
+                bot.loop.create_task(event_timer(event_id))
+                logging.info(f"🔄 กำลัง Restore ข้อมูล Event ID: {event_id}")
+
+                # อัปเดต events
+                events[event_id] = event_data
+                
+
+        logging.info("✅ Restore ข้อมูล Event สำเร็จ")
+    except FileNotFoundError:
+        logging.warning("⚠️ ไม่พบไฟล์ Backup ข้อมูล Event")
+    except Exception as e:
+        logging.error(f"❌ เกิดข้อผิดพลาดในการ Restore ข้อมูล: {e}")
+
+
+#=============================================================================================
 #⚠️ /Help แสดงคำสั่งทั้งหมดของบอท
 @bot.tree.command(name="help", description="แสดงคำสั่งทั้งหมดของบอท")
 async def help_command(interaction: discord.Interaction):
@@ -812,16 +851,22 @@ async def on_member_remove(member):
 @bot.event
 async def on_ready():
     bot.start_time = datetime.now()  # เก็บเวลาที่บอทเริ่มทำงาน
+    restore_events()  # โหลดข้อมูลจากไฟล์ Backup
+    
     logging.info(f'✅ Logged in as {bot.user}')
     await bot.change_presence(
         status=discord.Status.online,
-        activity=discord.Game(name="Arma 3 | 69RangerGTMCommunit")
+        activity=discord.Game(name="Arma 3 | 69RangerGTMCommunity")
     )
     try:
         synced = await bot.tree.sync()
         logging.info(f"✅ ซิงค์คำสั่ง {len(synced)} คำสั่งเรียบร้อยแล้ว")
     except Exception as e:
         logging.error(f"❌ เกิดข้อผิดพลาดในการซิงค์คำสั่ง: {e}")
+
+    # เริ่ม Task สำหรับ Backup ข้อมูล Event ทุกๆ 30 นาที
+    bot.loop.create_task(backup_events_periodically())
+    logging.info("✅ Task สำหรับ Backup ข้อมูล Event เริ่มทำงานแล้ว")
 
 #=============================================================================================
 # ⚠️ Error Handling
