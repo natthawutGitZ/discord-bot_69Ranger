@@ -55,25 +55,24 @@ events = {}
 #=============================================================================================
 # ⚠️ ปุ่มตอบรับกิจกรรม 
 class EventView(View):
-    def __init__(self, message, event_id, mod_links):
+    def __init__(self, message, event_id, mod_links, editor_id):
         super().__init__(timeout=None)
         self.message = message
         self.event_id = event_id
         self.mod_links = mod_links
-        self.notified_users = set()  # เก็บรายชื่อผู้ที่กดปุ่ม "รับการแจ้งเตือน"   
+        self.notified_users = set()  # เก็บรายชื่อผู้ที่กดปุ่ม "รับการแจ้งเตือน"
+        
 
     async def update_counts(self):
         event = events[self.event_id]
         counts = f"✅Accepted ( {len(event['joined'])} ) คน | ❌Declined ( {len(event['declined'])} ) คน | ❓Tentative ( {len(event['maybe'])} ) คน"
     
-        # ตรวจสอบก่อนเพิ่ม ModDropdown
-        if not any(isinstance(item, ModDropdown) for item in self.children):
-            if self.mod_links:
-                self.add_item(ModDropdown(self.mod_links))
+
+        self.add_item(ModDropdown(self.mod_links))
     
-        # ตรวจสอบก่อนเพิ่ม NotificationDropdown
-        if not any(isinstance(item, NotificationDropdown) for item in self.children):
-            self.add_item(NotificationDropdown(self.notified_users))
+        self.add_item(NotificationDropdown(self.notified_users))
+        
+        self.add_item(EventManagementDropdown(event_id, editor_id))
     
         embed = event['embed']
         if embed.fields:
@@ -121,7 +120,7 @@ class ModDropdown(Select):
             discord.SelectOption(label=f"Mod #{i+1}", value=link, description="คลิกเพื่อดูข้อมูล")
             for i, link in enumerate(unique_links)
         ]
-        super().__init__(placeholder="🔗 เลือก Mod เพิ่มเติม", options=options)
+        super().__init__(placeholder="🔗 ดู Mod เพิ่มเติม", options=options)
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.send_message(f"🔗 [คลิกเพื่อดู Mod]({self.values[0]})", ephemeral=True)
@@ -149,6 +148,83 @@ class NotificationDropdown(Select):
                 await interaction.response.send_message("✅ คุณได้ปิดการแจ้งเตือนแล้ว!", ephemeral=True)
             else:
                 await interaction.response.send_message("❌ คุณยังไม่ได้เปิดการแจ้งเตือน!", ephemeral=True)
+
+class EventManagementDropdown(Select):
+    def __init__(self, event_id, editor_id):
+        self.event_id = event_id
+        self.editor_id = editor_id  # ID ของผู้สร้างกิจกรรม
+        options = [
+            discord.SelectOption(label="Edit", value="edit", description="แก้ไขกิจกรรม"),
+            discord.SelectOption(label="Delete", value="delete", description="ลบกิจกรรม"),
+            discord.SelectOption(label="Postpone (Busy)", value="postpone_busy", description="เลื่อนกิจกรรม (ติดธุระ)"),
+            discord.SelectOption(label="Postpone (Insufficient Players)", value="postpone_insufficient", description="เลื่อนกิจกรรม (ผู้เล่นไม่พอ)")
+        ]
+        super().__init__(placeholder="⚙️ จัดการกิจกรรม", options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        # ตรวจสอบสิทธิ์ของผู้ใช้
+        if interaction.user.id != self.editor_id:
+            await interaction.response.send_message("❌ คุณไม่มีสิทธิ์จัดการกิจกรรมนี้", ephemeral=True)
+            return
+
+        event = events.get(self.event_id)
+        if not event:
+            await interaction.response.send_message("❌ ไม่พบกิจกรรมนี้", ephemeral=True)
+            return
+
+        # สร้าง View สำหรับการยืนยัน
+        view = ConfirmationView()
+        if self.values[0] == "edit":
+            await interaction.response.send_message("📝 คุณต้องการแก้ไขกิจกรรมนี้หรือไม่?", view=view, ephemeral=True)
+        elif self.values[0] == "delete":
+            await interaction.response.send_message("🗑️ คุณต้องการลบกิจกรรมนี้หรือไม่?", view=view, ephemeral=True)
+        elif self.values[0] == "postpone_busy":
+            await interaction.response.send_message("📢 คุณต้องการเลื่อนกิจกรรม (ติดธุระ) หรือไม่?", view=view, ephemeral=True)
+        elif self.values[0] == "postpone_insufficient":
+            await interaction.response.send_message("📢 คุณต้องการเลื่อนกิจกรรม (ผู้เล่นไม่พอ) หรือไม่?", view=view, ephemeral=True)
+
+        # รอการตอบสนองจากผู้ใช้
+        await view.wait()
+
+        if view.value is None:
+            await interaction.followup.send("⏰ หมดเวลาการยืนยัน", ephemeral=True)
+            return
+
+        if view.value:
+            if self.values[0] == "edit":
+                await interaction.followup.send("✅ กิจกรรมถูกแก้ไขเรียบร้อยแล้ว!", ephemeral=True)
+                # เพิ่มโค้ดสำหรับการแก้ไขกิจกรรมที่นี่
+            elif self.values[0] == "delete":
+                try:
+                    await event['message'].delete()
+                    del events[self.event_id]
+                    await interaction.followup.send("✅ กิจกรรมถูกลบเรียบร้อยแล้ว!", ephemeral=True)
+                except Exception as e:
+                    await interaction.followup.send(f"❌ เกิดข้อผิดพลาดในการลบกิจกรรม: {e}", ephemeral=True)
+            elif self.values[0] == "postpone_busy":
+                try:
+                    embed = discord.Embed(
+                        title="📢 ประกาศเลื่อนกิจกรรม",
+                        description="เนื่องจากผู้จัดติดธุระด่วน กิจกรรมนี้จะถูกเลื่อนออกไป ขออภัยในความไม่สะดวก",
+                        color=discord.Color.orange()
+                    )
+                    await event['thread'].send(embed=embed)
+                    await interaction.followup.send("✅ ประกาศเลื่อนกิจกรรม (ติดธุระ) สำเร็จ!", ephemeral=True)
+                except Exception as e:
+                    await interaction.followup.send(f"❌ เกิดข้อผิดพลาดในการประกาศเลื่อนกิจกรรม: {e}", ephemeral=True)
+            elif self.values[0] == "postpone_insufficient":
+                try:
+                    embed = discord.Embed(
+                        title="📢 ประกาศเลื่อนกิจกรรม",
+                        description="เนื่องจากผู้เล่นมีจำนวนไม่เพียงพอ กิจกรรมนี้จะถูกเลื่อนออกไป ขออภัยในความไม่สะดวก",
+                        color=discord.Color.orange()
+                    )
+                    await event['thread'].send(embed=embed)
+                    await interaction.followup.send("✅ ประกาศเลื่อนกิจกรรม (ผู้เล่นไม่พอ) สำเร็จ!", ephemeral=True)
+                except Exception as e:
+                    await interaction.followup.send(f"❌ เกิดข้อผิดพลาดในการประกาศเลื่อนกิจกรรม: {e}", ephemeral=True)
+        else:
+            await interaction.followup.send("❌ การดำเนินการถูกยกเลิก", ephemeral=True)
 
 #=============================================================================================
 # ฟังก์ชันสำหรับอัปเดต Embed สรุปการตอบรับ
