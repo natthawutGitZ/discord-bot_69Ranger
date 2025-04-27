@@ -517,11 +517,17 @@ async def create_event(interaction: discord.Interaction,
                                 logging.warning(f"❌ ไม่สามารถส่งข้อความให้ {member.name}: {e}")
 #=============================================================================================
 # ฟังก์ชันสำหรับ Backup ข้อมูลกิจกรรม
+
+def datetime_converter(o):
+    if isinstance(o, datetime):
+        return o.isoformat()  # แปลง datetime เป็น ISO 8601 string
+    raise TypeError("Type not serializable")
+
 async def backup_events_periodically():
     while True:
         try:
             with open("events_backup.json", "w", encoding="utf-8") as f:
-                json.dump(events, f, ensure_ascii=False, indent=4, default=str)
+                json.dump(events, f, ensure_ascii=False, indent=4, default=datetime_converter)
             logging.info("✅ Backup ข้อมูล Event สำเร็จ")
         except Exception as e:
             logging.error(f"❌ เกิดข้อผิดพลาดในการ Backup ข้อมูล: {e}")
@@ -534,6 +540,10 @@ def restore_events():
         with open("events_backup.json", "r", encoding="utf-8") as f:
             restored_events = json.load(f)
             for event_id, event_data in restored_events.items():
+                # แปลง start_time และ end_time จาก string เป็น datetime
+                event_data['start_time'] = datetime.fromisoformat(event_data['start_time']).astimezone(pytz.timezone("Asia/Bangkok"))
+                event_data['end_time'] = datetime.fromisoformat(event_data['end_time']).astimezone(pytz.timezone("Asia/Bangkok"))
+
                 # สร้าง View ใหม่
                 view = EventView(event_data['message'], event_id, event_data.get('mod_links', []))
                 event_data['view'] = view
@@ -544,7 +554,6 @@ def restore_events():
 
                 # อัปเดต events
                 events[event_id] = event_data
-                
 
         logging.info("✅ Restore ข้อมูล Event สำเร็จ")
     except FileNotFoundError:
@@ -852,7 +861,7 @@ async def on_member_remove(member):
 async def on_ready():
     bot.start_time = datetime.now()  # เก็บเวลาที่บอทเริ่มทำงาน
     restore_events()  # โหลดข้อมูลจากไฟล์ Backup
-    
+
     logging.info(f'✅ Logged in as {bot.user}')
     await bot.change_presence(
         status=discord.Status.online,
