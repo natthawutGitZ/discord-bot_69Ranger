@@ -520,11 +520,12 @@ async def create_event(interaction: discord.Interaction,
 @bot.tree.command(name="backup_events", description="ทดสอบการ Backup ข้อมูลกิจกรรม")
 async def backup_events_command(interaction: discord.Interaction):
     try:
-        # แปลง embed เป็น dict ก่อนบันทึก
+        # แปลง embed เป็น dict และข้ามฟิลด์ view
         backup_data = {
             event_id: {
-                **event_data,
-                'embed': event_data['embed'].to_dict()  # แปลง embed เป็น dict
+                key: (value.to_dict() if key == 'embed' else value)
+                for key, value in event_data.items()
+                if key != 'view'  # ข้ามฟิลด์ view
             }
             for event_id, event_data in events.items()
         }
@@ -547,6 +548,8 @@ def datetime_converter(o):
         return {"id": o.id}  # เก็บเฉพาะ ID ของ Thread
     elif isinstance(o, discord.Message):
         return {"id": o.id, "channel_id": o.channel.id}  # เก็บเฉพาะ ID ของ Message และ Channel
+    elif isinstance(o, EventView):
+        return None  # ข้ามการ Serialize EventView
     raise TypeError(f"Type {type(o)} not serializable")
 
 async def backup_events_periodically():
@@ -567,54 +570,26 @@ async def restore_events():
         with open("events_backup.json", "r", encoding="utf-8") as f:
             restored_events = json.load(f)
             for event_id, event_data in restored_events.items():
-                # ตรวจสอบว่า event_data เป็น dict
-                if not isinstance(event_data, dict):
-                    logging.error(f"❌ ข้อมูล Event ID: {event_id} ไม่ถูกต้อง (ไม่ใช่ dict): {event_data}")
-                    continue
-
                 # แปลง start_time และ end_time จาก string เป็น datetime
                 event_data['start_time'] = datetime.fromisoformat(event_data['start_time']).astimezone(pytz.timezone("Asia/Bangkok"))
                 event_data['end_time'] = datetime.fromisoformat(event_data['end_time']).astimezone(pytz.timezone("Asia/Bangkok"))
 
                 # แปลง embed จาก dict เป็น discord.Embed
-                embed_data = event_data.get('embed')
-                if isinstance(embed_data, dict):
-                    event_data['embed'] = discord.Embed.from_dict(embed_data)
-                else:
-                    logging.error(f"❌ Embed ของ Event ID: {event_id} ไม่ถูกต้อง: {embed_data}")
-                    continue
+                embed_data = event_data['embed']
+                event_data['embed'] = discord.Embed.from_dict(embed_data)
 
                 # แปลง thread จาก dict เป็น discord.Thread (ใช้ ID เพื่อค้นหา Thread)
-                thread_data = event_data.get('thread')
-                if isinstance(thread_data, dict) and 'id' in thread_data:
-                    event_data['thread'] = bot.get_channel(thread_data['id'])
-                else:
-                    logging.error(f"❌ Thread ของ Event ID: {event_id} ไม่ถูกต้อง: {thread_data}")
-                    continue
+                thread_id = event_data['thread']['id']
+                event_data['thread'] = bot.get_channel(thread_id)
 
                 # กู้คืน message จาก message.id และ channel.id
-                message_data = event_data.get('message')
-                if isinstance(message_data, dict) and 'id' in message_data and 'channel_id' in message_data:
-                    channel = bot.get_channel(message_data['channel_id'])
-                    if channel is None:
-                        logging.error(f"❌ ไม่พบ Channel ID: {message_data['channel_id']} สำหรับ Event ID: {event_id}")
-                        continue
-                    try:
-                        event_data['message'] = await channel.fetch_message(message_data['id'])
-                    except discord.NotFound:
-                        logging.error(f"❌ ไม่พบ Message ID: {message_data['id']} ใน Channel ID: {message_data['channel_id']}")
-                        continue
-                else:
-                    logging.error(f"❌ Message ของ Event ID: {event_id} ไม่ถูกต้อง: {message_data}")
-                    continue
+                message_data = event_data['message']
+                channel = bot.get_channel(message_data['channel_id'])
+                event_data['message'] = await channel.fetch_message(message_data['id'])
 
                 # สร้าง View ใหม่
                 view = EventView(event_data['message'], event_id, event_data.get('mod_links', []))
                 event_data['view'] = view
-
-                # สร้าง Task สำหรับ event_timer
-                bot.loop.create_task(event_timer(event_id))
-                logging.info(f"🔄 กำลัง Restore ข้อมูล Event ID: {event_id}")
 
                 # อัปเดต events
                 events[event_id] = event_data
