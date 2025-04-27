@@ -1,33 +1,14 @@
 {
     "event_id_1": {
         "operation": "Operation: Fallen Angel",
-        "editor": "@Silver BlackWell",
-        "preset": "69Ranger RE Preset Edit V5",
-        "roles": "75th Ranger Regiment",
-        "story": "ปฏิบัติการพิเศษกลางคืนเพื่อช่วยเหลือตัวประกัน",
-        "joined": [],
-        "declined": [],
-        "maybe": [],
-        "embed": {
-            "title": "📌 Operation: Fallen Angel",
-            "description": "รายละเอียดกิจกรรม...",
-            "fields": [
-                {
-                    "name": "จำนวนผู้ตอบรับ",
-                    "value": "✅Accepted (0) คน | ❌Declined (0) คน | ❓Tentative (0) คน",
-                    "inline": false
-                }
-            ]
-        },
         "start_time": "2025-04-27T20:30:00+07:00",
         "end_time": "2025-04-27T23:30:00+07:00",
         "thread": {
-            "id": 123456789012345678
+            "id": 987654321098765432
         },
         "message": {
-            "id": 987654321098765432,
-            "channel_id": 123456789012345678
-        },
-        "mod_links": []
+            "id": 123456789012345678,
+            "channel_id": 234567890123456789
+        }
     }
 }
