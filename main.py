@@ -526,8 +526,16 @@ def datetime_converter(o):
 async def backup_events_periodically():
     while True:
         try:
+            # แปลง embed เป็น dict ก่อนบันทึก
+            backup_data = {
+                event_id: {
+                    **event_data,
+                    'embed': event_data['embed'].to_dict()  # แปลง embed เป็น dict
+                }
+                for event_id, event_data in events.items()
+            }
             with open("events_backup.json", "w", encoding="utf-8") as f:
-                json.dump(events, f, ensure_ascii=False, indent=4, default=datetime_converter)
+                json.dump(backup_data, f, ensure_ascii=False, indent=4, default=datetime_converter)
             logging.info("✅ Backup ข้อมูล Event สำเร็จ")
         except Exception as e:
             logging.error(f"❌ เกิดข้อผิดพลาดในการ Backup ข้อมูล: {e}")
@@ -543,6 +551,11 @@ def restore_events():
                 # แปลง start_time และ end_time จาก string เป็น datetime
                 event_data['start_time'] = datetime.fromisoformat(event_data['start_time']).astimezone(pytz.timezone("Asia/Bangkok"))
                 event_data['end_time'] = datetime.fromisoformat(event_data['end_time']).astimezone(pytz.timezone("Asia/Bangkok"))
+
+                # แปลง embed จาก dict เป็น discord.Embed
+                embed_data = event_data['embed']
+                embed = discord.Embed.from_dict(embed_data)
+                event_data['embed'] = embed
 
                 # สร้าง View ใหม่
                 view = EventView(event_data['message'], event_id, event_data.get('mod_links', []))
