@@ -596,7 +596,14 @@ async def restore_events():
                 message_data = event_data.get('message')
                 if isinstance(message_data, dict) and 'id' in message_data and 'channel_id' in message_data:
                     channel = bot.get_channel(message_data['channel_id'])
-                    event_data['message'] = await channel.fetch_message(message_data['id'])
+                    if channel is None:
+                        logging.error(f"❌ ไม่พบ Channel ID: {message_data['channel_id']} สำหรับ Event ID: {event_id}")
+                        continue
+                    try:
+                        event_data['message'] = await channel.fetch_message(message_data['id'])
+                    except discord.NotFound:
+                        logging.error(f"❌ ไม่พบ Message ID: {message_data['id']} ใน Channel ID: {message_data['channel_id']}")
+                        continue
                 else:
                     logging.error(f"❌ Message ของ Event ID: {event_id} ไม่ถูกต้อง: {message_data}")
                     continue
@@ -617,7 +624,6 @@ async def restore_events():
         logging.warning("⚠️ ไม่พบไฟล์ Backup ข้อมูล Event")
     except Exception as e:
         logging.error(f"❌ เกิดข้อผิดพลาดในการ Restore ข้อมูล: {e}")
-
 
 #=============================================================================================
 #⚠️ /Help แสดงคำสั่งทั้งหมดของบอท
