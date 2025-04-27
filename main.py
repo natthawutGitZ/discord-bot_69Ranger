@@ -60,8 +60,10 @@ class EventView(View):
         self.message = message
         self.event_id = event_id
         self.mod_links = mod_links
+        self.editor_id = editor_id  # กำหนด editor_id ให้กับ instance
         self.notified_users = set()  # เก็บรายชื่อผู้ที่กดปุ่ม "รับการแจ้งเตือน"
 
+        # เพิ่ม Dropdown และปุ่ม
         self.add_item(ModDropdown(self.mod_links))
         self.add_item(NotificationDropdown(self.notified_users))
         self.add_item(EventManagementDropdown(self.event_id, self.editor_id))
