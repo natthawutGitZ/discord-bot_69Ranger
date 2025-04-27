@@ -3,12 +3,24 @@
         "operation": "Operation: Fallen Angel",
         "start_time": "2025-04-27T20:30:00+07:00",
         "end_time": "2025-04-27T23:30:00+07:00",
+        "embed": {
+            "title": "📌 Operation: Fallen Angel",
+            "description": "รายละเอียดกิจกรรม...",
+            "fields": [
+                {
+                    "name": "จำนวนผู้ตอบรับ",
+                    "value": "✅Accepted (0) คน | ❌Declined (0) คน | ❓Tentative (0) คน",
+                    "inline": false
+                }
+            ]
+        },
         "thread": {
             "id": 987654321098765432
         },
         "message": {
             "id": 123456789012345678,
             "channel_id": 234567890123456789
-        }
+        },
+        "mod_links": []
     }
 }
