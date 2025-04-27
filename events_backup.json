@@ -1,0 +1,56 @@
+{
+    "event_id_1": {
+        "operation": "Operation: Fallen Angel",
+        "editor": "@Silver BlackWell",
+        "preset": "69Ranger RE Preset Edit V5",
+        "roles": "75th Ranger Regiment",
+        "story": "ปฏิบัติการพิเศษกลางคืนเพื่อช่วยเหลือตัวประกัน",
+        "joined": ["@User1", "@User2"],
+        "declined": ["@User3"],
+        "maybe": ["@User4"],
+        "embed": {
+            "title": "📌 Operation: Fallen Angel",
+            "description": "รายละเอียดกิจกรรม...",
+            "fields": [
+                {
+                    "name": "จำนวนผู้ตอบรับ",
+                    "value": "✅Accepted (2) คน | ❌Declined (1) คน | ❓Tentative (1) คน",
+                    "inline": false
+                }
+            ]
+        },
+        "timestamp": 1714150200,
+        "start_time": "2025-04-26T20:30:00+07:00",
+        "end_time": "2025-04-26T23:30:00+07:00",
+        "thread": "thread_id_1",
+        "message": "message_id_1",
+        "view": null
+    },
+    "event_id_2": {
+        "operation": "Operation: Dark Horizon",
+        "editor": "@Admin",
+        "preset": "Custom Preset",
+        "roles": "Special Forces",
+        "story": "ภารกิจลับในพื้นที่ศัตรู",
+        "joined": [],
+        "declined": [],
+        "maybe": [],
+        "embed": {
+            "title": "📌 Operation: Dark Horizon",
+            "description": "รายละเอียดกิจกรรม...",
+            "fields": [
+                {
+                    "name": "จำนวนผู้ตอบรับ",
+                    "value": "✅Accepted (0) คน | ❌Declined (0) คน | ❓Tentative (0) คน",
+                    "inline": false
+                }
+            ]
+        },
+        "timestamp": 1714153800,
+        "start_time": "2025-04-27T20:30:00+07:00",
+        "end_time": "2025-04-27T23:30:00+07:00",
+        "thread": "thread_id_2",
+        "message": "message_id_2",
+        "view": null
+    }
+}
