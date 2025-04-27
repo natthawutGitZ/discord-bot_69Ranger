@@ -611,9 +611,10 @@ async def restore_events():
                     logging.error(f"❌ Message ของ Event ID: {event_id} ไม่ถูกต้อง: {message_data}")
                     continue
 
-                # สร้าง View ใหม่
+                # สร้าง View ใหม่และลงทะเบียน
                 view = EventView(event_data['message'], event_id, event_data.get('mod_links', []))
                 event_data['view'] = view
+                bot.add_view(view)  # ลงทะเบียน View ใหม่
 
                 # อัปเดต events
                 events[event_id] = event_data
