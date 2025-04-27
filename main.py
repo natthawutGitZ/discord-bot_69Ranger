@@ -529,6 +529,7 @@ async def backup_events_command(interaction: discord.Interaction):
             }
             for event_id, event_data in events.items()
         }
+        logging.debug(f"Backup Data: {backup_data}")  # Debug ข้อมูลก่อนเขียนลงไฟล์
         with open("events_backup.json", "w", encoding="utf-8") as f:
             json.dump(backup_data, f, ensure_ascii=False, indent=4, default=datetime_converter)
         await interaction.response.send_message("✅ Backup ข้อมูล Event สำเร็จ!", ephemeral=True)
@@ -536,7 +537,6 @@ async def backup_events_command(interaction: discord.Interaction):
     except Exception as e:
         await interaction.response.send_message(f"❌ เกิดข้อผิดพลาดในการ Backup ข้อมูล: {e}", ephemeral=True)
         logging.error(f"❌ เกิดข้อผิดพลาดในการ Backup ข้อมูล: {e}")
-
 # ฟังก์ชันสำหรับ Backup ข้อมูลกิจกรรม
 
 def datetime_converter(o):
