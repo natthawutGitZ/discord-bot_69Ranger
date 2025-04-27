@@ -61,18 +61,14 @@ class EventView(View):
         self.event_id = event_id
         self.mod_links = mod_links
         self.notified_users = set()  # เก็บรายชื่อผู้ที่กดปุ่ม "รับการแจ้งเตือน"
-        
+
+        self.add_item(ModDropdown(self.mod_links))
+        self.add_item(NotificationDropdown(self.notified_users))
+        self.add_item(EventManagementDropdown(self.event_id, self.editor_id))
 
     async def update_counts(self):
         event = events[self.event_id]
         counts = f"✅Accepted ( {len(event['joined'])} ) คน | ❌Declined ( {len(event['declined'])} ) คน | ❓Tentative ( {len(event['maybe'])} ) คน"
-    
-
-        self.add_item(ModDropdown(self.mod_links))
-    
-        self.add_item(NotificationDropdown(self.notified_users))
-        
-        self.add_item(EventManagementDropdown(event_id, editor_id))
     
         embed = event['embed']
         if embed.fields:
@@ -535,7 +531,7 @@ async def create_event(interaction: discord.Interaction,
         msg = await channel.send(embed=embed, view=None)
         thread = await msg.create_thread(name=operation)
         event_id = str(uuid.uuid4())
-        view = EventView(msg, event_id, mod_links)
+        view = EventView(msg, event_id, mod_links, editor_id=interaction.user.id)  # เพิ่ม editor_id
         events[event_id] = {
             'operation': operation,
             'editor': editor,
