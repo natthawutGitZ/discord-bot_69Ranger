@@ -582,10 +582,27 @@ async def restore_events():
                 thread_id = event_data['thread']['id']
                 event_data['thread'] = bot.get_channel(thread_id)
 
+
+
                 # กู้คืน message จาก message.id และ channel.id
-                message_data = event_data['message']
-                channel = bot.get_channel(message_data['channel_id'])
-                event_data['message'] = await channel.fetch_message(message_data['id'])
+                message_data = event_data.get('message')
+                if isinstance(message_data, dict) and 'id' in message_data and 'channel_id' in message_data:
+                    channel = bot.get_channel(message_data['channel_id'])
+                    if channel is None:
+                        logging.error(f"❌ ไม่พบ Channel ID: {message_data['channel_id']} สำหรับ Event ID: {event_id}")
+                        continue
+                    try:
+                        event_data['message'] = await channel.fetch_message(message_data['id'])
+                    except discord.NotFound:
+                        logging.error(f"❌ ไม่พบ Message ID: {message_data['id']} ใน Channel ID: {message_data['channel_id']}")
+                        continue
+                else:
+                    logging.error(f"❌ Message ของ Event ID: {event_id} ไม่ถูกต้อง: {message_data}")
+                    continue
+                
+                if channel is None:
+                    logging.warning(f"⚠️ Channel ID: {message_data['channel_id']} ถูกลบหรือไม่สามารถเข้าถึงได้สำหรับ Event ID: {event_id}")
+                    continue
 
                 # สร้าง View ใหม่
                 view = EventView(event_data['message'], event_id, event_data.get('mod_links', []))
