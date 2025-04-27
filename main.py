@@ -122,7 +122,7 @@ class ModDropdown(Select):
             discord.SelectOption(label=f"Mod #{i+1}", value=link, description="คลิกเพื่อดูข้อมูล")
             for i, link in enumerate(unique_links)
         ]
-        super().__init__(placeholder="🔗 เลือก Mod เพิ่มเติม", options=options)
+        super().__init__(placeholder="🔗 ดู Mod เพิ่มเติม", options=options)
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.send_message(f"🔗 [คลิกเพื่อดู Mod]({self.values[0]})", ephemeral=True)
