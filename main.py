@@ -535,27 +535,24 @@ async def backup_events_command(interaction: discord.Interaction):
     except Exception as e:
         await interaction.response.send_message(f"❌ เกิดข้อผิดพลาดในการ Backup ข้อมูล: {e}", ephemeral=True)
         logging.error(f"❌ เกิดข้อผิดพลาดในการ Backup ข้อมูล: {e}")
-        
+
 # ฟังก์ชันสำหรับ Backup ข้อมูลกิจกรรม
 
 def datetime_converter(o):
     if isinstance(o, datetime):
         return o.isoformat()  # แปลง datetime เป็น ISO 8601 string
-    raise TypeError("Type not serializable")
+    elif isinstance(o, discord.Embed):
+        return o.to_dict()  # แปลง Embed เป็น dict
+    elif isinstance(o, discord.Thread):
+        return {"id": o.id}  # เก็บเฉพาะ ID ของ Thread
+    raise TypeError(f"Type {type(o)} not serializable")
 
 async def backup_events_periodically():
     while True:
         try:
-            # แปลง embed เป็น dict ก่อนบันทึก
-            backup_data = {
-                event_id: {
-                    **event_data,
-                    'embed': event_data['embed'].to_dict()  # แปลง embed เป็น dict
-                }
-                for event_id, event_data in events.items()
-            }
+            # แปลงข้อมูลก่อนบันทึก
             with open("events_backup.json", "w", encoding="utf-8") as f:
-                json.dump(backup_data, f, ensure_ascii=False, indent=4, default=datetime_converter)
+                json.dump(events, f, ensure_ascii=False, indent=4, default=datetime_converter)
             logging.info("✅ Backup ข้อมูล Event สำเร็จ")
         except Exception as e:
             logging.error(f"❌ เกิดข้อผิดพลาดในการ Backup ข้อมูล: {e}")
@@ -574,8 +571,11 @@ def restore_events():
 
                 # แปลง embed จาก dict เป็น discord.Embed
                 embed_data = event_data['embed']
-                embed = discord.Embed.from_dict(embed_data)
-                event_data['embed'] = embed
+                event_data['embed'] = discord.Embed.from_dict(embed_data)
+
+                # แปลง thread จาก dict เป็น discord.Thread (ใช้ ID เพื่อค้นหา Thread)
+                thread_id = event_data['thread']['id']
+                event_data['thread'] = bot.get_channel(thread_id)
 
                 # สร้าง View ใหม่
                 view = EventView(event_data['message'], event_id, event_data.get('mod_links', []))
