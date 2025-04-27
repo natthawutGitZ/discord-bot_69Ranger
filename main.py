@@ -561,7 +561,7 @@ async def backup_events_periodically():
         await asyncio.sleep(1800)  # รอ 30 นาที (1800 วินาที) ก่อน Backup ครั้งถัดไป
 
 # ฟังก์ชันสำหรับ Restore ข้อมูล
-def restore_events():
+async def restore_events():
     global events
     try:
         with open("events_backup.json", "r", encoding="utf-8") as f:
@@ -900,7 +900,7 @@ async def on_member_remove(member):
 @bot.event
 async def on_ready():
     bot.start_time = datetime.now()  # เก็บเวลาที่บอทเริ่มทำงาน
-    restore_events()  # โหลดข้อมูลจากไฟล์ Backup
+    await restore_events()  # โหลดข้อมูลจากไฟล์ Backup
 
     logging.info(f'✅ Logged in as {bot.user}')
     await bot.change_presence(
@@ -916,7 +916,6 @@ async def on_ready():
     # เริ่ม Task สำหรับ Backup ข้อมูล Event ทุกๆ 30 นาที
     bot.loop.create_task(backup_events_periodically())
     logging.info("✅ Task สำหรับ Backup ข้อมูล Event เริ่มทำงานแล้ว")
-
 #=============================================================================================
 # ⚠️ Error Handling
 #=============================================================================================
