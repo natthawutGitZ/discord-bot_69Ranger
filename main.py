@@ -17,7 +17,6 @@ import pytz
 import asyncio
 import uuid
 import re
-import json
 
 from datetime import datetime, timedelta
 from typing import Optional
@@ -122,7 +121,7 @@ class ModDropdown(Select):
             discord.SelectOption(label=f"Mod #{i+1}", value=link, description="คลิกเพื่อดูข้อมูล")
             for i, link in enumerate(unique_links)
         ]
-        super().__init__(placeholder="🔗 ดู Mod เพิ่มเติม", options=options)
+        super().__init__(placeholder="🔗 เลือก Mod เพิ่มเติม", options=options)
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.send_message(f"🔗 [คลิกเพื่อดู Mod]({self.values[0]})", ephemeral=True)
@@ -251,7 +250,7 @@ async def event_timer(event_id):
 
 
 #=============================================================================================
-#อัปเดตสถานะกิจกรรม 
+# อัปเดตสถานะกิจกรรม
     now = datetime.now(bangkok_tz)
     wait_until_start = (event['start_time'] - now).total_seconds()
     if wait_until_start > 0:
@@ -260,7 +259,7 @@ async def event_timer(event_id):
     embed = event['embed']
     embed.title = f"🟢 {event['operation']} (อยู่ในระหว่างกำลังดำเนินการ)"
     try:
-        await event['message'].edit(embed=embed, view=None)
+        await event['message'].edit(embed=embed)  # ไม่ลบปุ่มตอนเริ่มกิจกรรม
     except discord.errors.NotFound:
         print(f"[ERROR] Message for event {event['operation']} not found. It may have been deleted.")
         return
@@ -310,7 +309,7 @@ async def event_timer(event_id):
     except Exception as e:
         print(f"[ERROR] Failed to send event start notification to thread: {e}")
 #=============================================================================================
-    # รอจนถึงเวลาสิ้นสุดกิจกรรม
+# รอจนถึงเวลาสิ้นสุดกิจกรรม
     now = datetime.now(bangkok_tz)
     wait_until_end = (event['end_time'] - now).total_seconds()
     if wait_until_end > 0:
@@ -320,7 +319,7 @@ async def event_timer(event_id):
     embed = event['embed']
     embed.title = f"⚫ {event['operation']} (กิจกรรมได้จบลงแล้ว)"
     try:
-        await event['message'].edit(embed=embed, view=None)
+        await event['message'].edit(embed=embed, view=None)  # ลบปุ่มตอนจบกิจกรรม
     except Exception as e:
         print(f"[ERROR] Failed to update event status to finished: {e}")
 
@@ -515,115 +514,6 @@ async def create_event(interaction: discord.Interaction,
                                 sent_users.add(member.id)
                             except Exception as e:
                                 logging.warning(f"❌ ไม่สามารถส่งข้อความให้ {member.name}: {e}")
-#=============================================================================================
-#⚠️ /backup_events ทดสอบการ Backup ข้อมูล
-@bot.tree.command(name="backup_events", description="ทดสอบการ Backup ข้อมูลกิจกรรม")
-async def backup_events_command(interaction: discord.Interaction):
-    try:
-        # แปลง embed เป็น dict และข้ามฟิลด์ view
-        backup_data = {
-            event_id: {
-                key: (value.to_dict() if key == 'embed' else value)
-                for key, value in event_data.items()
-                if key != 'view'  # ข้ามฟิลด์ view
-            }
-            for event_id, event_data in events.items()
-        }
-        logging.debug(f"Backup Data: {backup_data}")  # Debug ข้อมูลก่อนเขียนลงไฟล์
-        with open("events_backup.json", "w", encoding="utf-8") as f:
-            json.dump(backup_data, f, ensure_ascii=False, indent=4, default=datetime_converter)
-        await interaction.response.send_message("✅ Backup ข้อมูล Event สำเร็จ!", ephemeral=True)
-        logging.info("✅ Backup ข้อมูล Event สำเร็จ")
-    except Exception as e:
-        await interaction.response.send_message(f"❌ เกิดข้อผิดพลาดในการ Backup ข้อมูล: {e}", ephemeral=True)
-        logging.error(f"❌ เกิดข้อผิดพลาดในการ Backup ข้อมูล: {e}")
-# ฟังก์ชันสำหรับ Backup ข้อมูลกิจกรรม
-
-def datetime_converter(o):
-    if isinstance(o, datetime):
-        return o.isoformat()  # แปลง datetime เป็น ISO 8601 string
-    elif isinstance(o, discord.Embed):
-        return o.to_dict()  # แปลง Embed เป็น dict
-    elif isinstance(o, discord.Thread):
-        return {"id": o.id}  # เก็บเฉพาะ ID ของ Thread
-    elif isinstance(o, discord.Message):
-        return {"id": o.id, "channel_id": o.channel.id}  # เก็บเฉพาะ ID ของ Message และ Channel
-    elif isinstance(o, EventView):
-        return None  # ข้ามการ Serialize EventView
-    raise TypeError(f"Type {type(o)} not serializable")
-
-async def backup_events_periodically():
-    while True:
-        try:
-            # แปลงข้อมูลก่อนบันทึก
-            with open("events_backup.json", "w", encoding="utf-8") as f:
-                json.dump(events, f, ensure_ascii=False, indent=4, default=datetime_converter)
-            logging.info("✅ Backup ข้อมูล Event สำเร็จ")
-        except Exception as e:
-            logging.error(f"❌ เกิดข้อผิดพลาดในการ Backup ข้อมูล: {e}")
-        await asyncio.sleep(1800)  # รอ 30 นาที (1800 วินาที) ก่อน Backup ครั้งถัดไป
-
-# ฟังก์ชันสำหรับ Restore ข้อมูล
-async def restore_events():
-    global events
-    try:
-        with open("events_backup.json", "r", encoding="utf-8") as f:
-            restored_events = json.load(f)
-            for event_id, event_data in restored_events.items():
-                # ตรวจสอบว่า event_data เป็น dict
-                if not isinstance(event_data, dict):
-                    logging.error(f"❌ ข้อมูล Event ID: {event_id} ไม่ถูกต้อง (ไม่ใช่ dict): {event_data}")
-                    continue
-
-                # แปลง start_time และ end_time จาก string เป็น datetime
-                event_data['start_time'] = datetime.fromisoformat(event_data['start_time']).astimezone(pytz.timezone("Asia/Bangkok"))
-                event_data['end_time'] = datetime.fromisoformat(event_data['end_time']).astimezone(pytz.timezone("Asia/Bangkok"))
-
-                # ตรวจสอบและแปลง embed จาก dict เป็น discord.Embed
-                embed_data = event_data.get('embed')
-                if embed_data and isinstance(embed_data, dict):
-                    event_data['embed'] = discord.Embed.from_dict(embed_data)
-                else:
-                    logging.error(f"❌ Embed ของ Event ID: {event_id} ไม่ถูกต้องหรือไม่มีข้อมูล: {embed_data}")
-                    continue
-
-                # แปลง thread จาก dict เป็น discord.Thread (ใช้ ID เพื่อค้นหา Thread)
-                thread_data = event_data.get('thread')
-                if isinstance(thread_data, dict) and 'id' in thread_data:
-                    event_data['thread'] = bot.get_channel(thread_data['id'])
-                else:
-                    logging.error(f"❌ Thread ของ Event ID: {event_id} ไม่ถูกต้อง: {thread_data}")
-                    continue
-
-                # กู้คืน message จาก message.id และ channel.id
-                message_data = event_data.get('message')
-                if isinstance(message_data, dict) and 'id' in message_data and 'channel_id' in message_data:
-                    channel = bot.get_channel(message_data['channel_id'])
-                    if channel is None:
-                        logging.error(f"❌ ไม่พบ Channel ID: {message_data['channel_id']} สำหรับ Event ID: {event_id}")
-                        continue
-                    try:
-                        event_data['message'] = await channel.fetch_message(message_data['id'])
-                    except discord.NotFound:
-                        logging.error(f"❌ ไม่พบ Message ID: {message_data['id']} ใน Channel ID: {message_data['channel_id']}")
-                        continue
-                else:
-                    logging.error(f"❌ Message ของ Event ID: {event_id} ไม่ถูกต้อง: {message_data}")
-                    continue
-
-                # สร้าง View ใหม่และลงทะเบียน
-                view = EventView(event_data['message'], event_id, event_data.get('mod_links', []))
-                event_data['view'] = view
-                bot.add_view(view)  # ลงทะเบียน View ใหม่
-
-                # อัปเดต events
-                events[event_id] = event_data
-
-        logging.info("✅ Restore ข้อมูล Event สำเร็จ")
-    except FileNotFoundError:
-        logging.warning("⚠️ ไม่พบไฟล์ Backup ข้อมูล Event")
-    except Exception as e:
-        logging.error(f"❌ เกิดข้อผิดพลาดในการ Restore ข้อมูล: {e}")
 #=============================================================================================
 #⚠️ /Help แสดงคำสั่งทั้งหมดของบอท
 @bot.tree.command(name="help", description="แสดงคำสั่งทั้งหมดของบอท")
@@ -922,12 +812,10 @@ async def on_member_remove(member):
 @bot.event
 async def on_ready():
     bot.start_time = datetime.now()  # เก็บเวลาที่บอทเริ่มทำงาน
-    await restore_events()  # โหลดข้อมูลจากไฟล์ Backup
-
     logging.info(f'✅ Logged in as {bot.user}')
     await bot.change_presence(
         status=discord.Status.online,
-        activity=discord.Game(name="Arma 3 | 69RangerGTMCommunity")
+        activity=discord.Game(name="Arma 3 | 69RangerGTMCommunit")
     )
     try:
         synced = await bot.tree.sync()
@@ -935,9 +823,6 @@ async def on_ready():
     except Exception as e:
         logging.error(f"❌ เกิดข้อผิดพลาดในการซิงค์คำสั่ง: {e}")
 
-    # เริ่ม Task สำหรับ Backup ข้อมูล Event ทุกๆ 30 นาที
-    bot.loop.create_task(backup_events_periodically())
-    logging.info("✅ Task สำหรับ Backup ข้อมูล Event เริ่มทำงานแล้ว")
 #=============================================================================================
 # ⚠️ Error Handling
 #=============================================================================================
