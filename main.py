@@ -903,8 +903,15 @@ async def on_member_remove(member):
         logging.error(f"❌ เกิดข้อผิดพลาด: {e}")
 #=============================================================================================
 # ⚠️ Bot Ready Event
+# เพิ่มตัวแปรสถานะ
+bot.is_ready = False
+
 @bot.event
 async def on_ready():
+    if bot.is_ready:  # ตรวจสอบว่าถูกเรียกใช้งานแล้วหรือไม่
+        return
+
+    bot.is_ready = True  # ตั้งค่าสถานะว่า on_ready ถูกเรียกใช้งานแล้ว
     bot.start_time = datetime.now()  # เก็บเวลาที่บอทเริ่มทำงาน
     logging.info(f'✅ Logged in as {bot.user}')
     await bot.change_presence(
