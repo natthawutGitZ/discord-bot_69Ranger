@@ -112,17 +112,19 @@ class EventView(View):
 
 class ModDropdown(Select):
     def __init__(self, mod_links):
-        # ลบค่าที่ซ้ำกันใน mod_links
-        unique_links = list(dict.fromkeys(mod_links)) if mod_links else []
-
         # ตรวจสอบว่ามี Mod หรือไม่
-        if not unique_links:
-            unique_links = ["ไม่มี Mod เพิ่มเติม"]
+        if not mod_links or mod_links == ["ไม่มี Mod เพิ่มเติม"]:
+            options = [
+                discord.SelectOption(label="ไม่มี Mod เพิ่มเติม", value="ไม่มี Mod เพิ่มเติม", description="ไม่มี Mod เพิ่มเติมในกิจกรรมนี้")
+            ]
+        else:
+            # ลบค่าที่ซ้ำกันใน mod_links
+            unique_links = list(dict.fromkeys(mod_links))
+            options = [
+                discord.SelectOption(label=f"Mod #{i+1}", value=link, description="คลิกเพื่อดูข้อมูล")
+                for i, link in enumerate(unique_links)
+            ]
 
-        options = [
-            discord.SelectOption(label=f"Mod #{i+1}", value=link, description="คลิกเพื่อดูข้อมูล")
-            for i, link in enumerate(unique_links)
-        ]
         super().__init__(placeholder="🔗 ดู Mod เพิ่มเติม", options=options)
 
     async def callback(self, interaction: discord.Interaction):
@@ -544,7 +546,7 @@ async def create_event(interaction: discord.Interaction,
 
         # แยก Mod Links
         mod_links = [link.strip() for link in addmod.split(",")] if addmod else ["ไม่มี Mod เพิ่มเติม"]
-
+        
         # สร้าง EventView พร้อม mod_links
         view = EventView(msg, event_id, mod_links, editor_id=interaction.user.id)
 
