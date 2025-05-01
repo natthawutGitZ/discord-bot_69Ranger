@@ -8,7 +8,7 @@
 # The bot is designed to be user-friendly and provide a seamless experience for community members.
 # The bot is hosted on Replit and uses a keep_alive function to keep the bot running continuously.
 #=============================================================================================
-# Import necessary libraries
+# Import necessary libraries 
 #=============================================================================================
 import discord
 import os
@@ -113,7 +113,15 @@ class EventView(View):
 class ModDropdown(Select):
     def __init__(self, mod_links):
         # ลบค่าที่ซ้ำกันใน mod_links
-        unique_links = list(dict.fromkeys(mod_links))  # ใช้ dict เพื่อกรองค่าซ้ำ
+        unique_links = list(dict.fromkeys(mod_links)) if mod_links else []
+
+        # แยก Mod Links
+        mod_links = [link.strip() for link in addmod.split(",")] if addmod else []
+
+        # เพิ่ม fallback option หากไม่มี mod_links
+        if not unique_links:
+            unique_links = ["https://example.com"]  # Default link
+
         options = [
             discord.SelectOption(label=f"Mod #{i+1}", value=link, description="คลิกเพื่อดูข้อมูล")
             for i, link in enumerate(unique_links)
@@ -122,7 +130,6 @@ class ModDropdown(Select):
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.send_message(f"🔗 [คลิกเพื่อดู Mod]({self.values[0]})", ephemeral=True)
-
 class NotificationDropdown(Select):
     def __init__(self, notified_users):
         options = [
