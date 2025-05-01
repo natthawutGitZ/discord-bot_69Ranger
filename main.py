@@ -115,12 +115,9 @@ class ModDropdown(Select):
         # ลบค่าที่ซ้ำกันใน mod_links
         unique_links = list(dict.fromkeys(mod_links)) if mod_links else []
 
-        # แยก Mod Links
-        mod_links = [link.strip() for link in addmod.split(",")] if addmod else []
-
-        # เพิ่ม fallback option หากไม่มี mod_links
+        # ตรวจสอบว่ามี Mod หรือไม่
         if not unique_links:
-            unique_links = ["https://example.com"]  # Default link
+            unique_links = ["ไม่มี Mod เพิ่มเติม"]
 
         options = [
             discord.SelectOption(label=f"Mod #{i+1}", value=link, description="คลิกเพื่อดูข้อมูล")
@@ -129,7 +126,11 @@ class ModDropdown(Select):
         super().__init__(placeholder="🔗 ดู Mod เพิ่มเติม", options=options)
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.send_message(f"🔗 [คลิกเพื่อดู Mod]({self.values[0]})", ephemeral=True)
+        if self.values[0] == "ไม่มี Mod เพิ่มเติม":
+            await interaction.response.send_message("❌ ไม่มี Mod เพิ่มเติมในกิจกรรมนี้", ephemeral=True)
+        else:
+            await interaction.response.send_message(f"🔗 [คลิกเพื่อดู Mod]({self.values[0]})", ephemeral=True)
+
 class NotificationDropdown(Select):
     def __init__(self, notified_users):
         options = [
@@ -540,7 +541,17 @@ async def create_event(interaction: discord.Interaction,
         msg = await channel.send(embed=embed, view=None)
         thread = await msg.create_thread(name=operation)
         event_id = str(uuid.uuid4())
-        view = EventView(msg, event_id, mod_links, editor_id=interaction.user.id)  # เพิ่ม editor_id
+
+        # แยก Mod Links
+        mod_links = [link.strip() for link in addmod.split(",")] if addmod else ["ไม่มี Mod เพิ่มเติม"]
+
+        # สร้าง EventView พร้อม mod_links
+        view = EventView(msg, event_id, mod_links, editor_id=interaction.user.id)
+
+        # เพิ่ม EventView ลงในข้อความ
+        await msg.edit(embed=embed, view=view)
+
+        # บันทึกข้อมูลกิจกรรม
         events[event_id] = {
             'operation': operation,
             'editor': editor,
